@@ -13,15 +13,9 @@
 </p>
 
 <p align="center">
-  <a href="https://jet-set-ai.vercel.app">
-    <img src="https://img.shields.io/badge/LIVE_DEMO-VERCEL-black?style=for-the-badge&logo=vercel" alt="Live Demo Vercel">
-  </a>
-  <a href="https://samd445-jetset-ai.hf.space">
-    <img src="https://img.shields.io/badge/BACKEND-LIVE-green?style=for-the-badge&logo=docker" alt="Backend Docker">
-  </a>
-  <a href="https://github.com/SAMBHAV001-tech/JetSet.AI">
-    <img src="https://img.shields.io/badge/LICENSE-MIT-blue?style=for-the-badge" alt="License MIT">
-  </a>
+  <a href="https://jet-set-ai.vercel.app"><img src="https://img.shields.io/badge/LIVE_DEMO-VERCEL-black?style=for-the-badge&logo=vercel" alt="Live Demo Vercel"></a>
+  <a href="https://samd445-jetset-ai.hf.space"><img src="https://img.shields.io/badge/BACKEND-LIVE-green?style=for-the-badge&logo=docker" alt="Backend Docker"></a>
+  <a href="https://github.com/SAMBHAV001-tech/JetSet.AI"><img src="https://img.shields.io/badge/LICENSE-MIT-blue?style=for-the-badge" alt="License MIT"></a>
 </p>
 
 ---
