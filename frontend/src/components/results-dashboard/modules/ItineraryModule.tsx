@@ -1,5 +1,6 @@
-import { getApiUrl } from '@/utils/api';
 "use client";
+
+import { getApiUrl } from '@/utils/api';
 
 import React, { useState, useEffect, useRef } from "react";
 import { Map, Calendar, ChevronDown, ChevronUp, Loader2, AlertCircle } from "lucide-react";

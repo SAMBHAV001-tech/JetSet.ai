@@ -1,5 +1,6 @@
-import { getApiUrl } from '@/utils/api';
 "use client";
+
+import { getApiUrl } from '@/utils/api';
 
 import React, { useState, useEffect, useRef } from "react";
 import { Sparkles, Send, Bot, User, Share2, AlertTriangle } from "lucide-react";
