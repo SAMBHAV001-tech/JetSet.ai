@@ -146,6 +146,15 @@ Contributions, issues and feature requests are welcome!
 ---
 
 <p align="center">
-  <sub>Built with ❤️ for travelers, wanderers, and explorers everywhere.</sub>
+  <img src="https://img.shields.io/badge/Next.js-App_Router-black?style=flat-square&logo=next.js" alt="Next.js">
+  <img src="https://img.shields.io/badge/NestJS-TypeScript-ea2845?style=flat-square&logo=nestjs" alt="NestJS">
+  <img src="https://img.shields.io/badge/Gemini-AI_Powered-4285F4?style=flat-square&logo=google" alt="Gemini AI">
+  <img src="https://img.shields.io/badge/Groq-LLM_Racing-f97316?style=flat-square&logo=lightning" alt="Groq">
+  <img src="https://img.shields.io/badge/Supabase-PostgreSQL-3ECF8E?style=flat-square&logo=supabase" alt="Supabase">
+  <img src="https://img.shields.io/badge/Docker-Containerized-2496ED?style=flat-square&logo=docker" alt="Docker">
+</p>
+
+<p align="center">
+  <sub>Engineered with 🧭 for travelers who want smarter journeys, not just cheaper tickets.</sub>
 </p>
 
