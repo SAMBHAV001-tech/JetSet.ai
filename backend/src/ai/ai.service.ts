@@ -365,8 +365,23 @@ export class AiService {
     } catch (error: any) {
       this.logger.error(`Failed to stream summary combined plan: ${error.message}`);
       if (!geminiSucceeded) {
-        // Only show mock fallback if Gemini never returned content
-        onChunk('\n\n*Using AI-powered local summary:*\n\n');
+        const geminiKey = this.configService.get<string>('GEMINI_API_KEY');
+        const grokKey = this.configService.get<string>('GROK_API_KEY');
+        let reason = 'The AI model quota limits have been temporarily exceeded or the API services returned a rate limit error (429).';
+        if (!geminiKey && !grokKey) {
+          reason = 'Both GEMINI_API_KEY and GROK_API_KEY are missing from the backend configuration.';
+        }
+        const apology = `
+> ### 🌍 A Gentle Apology from JetSet.AI
+> 
+> We are sincerely sorry, but our intelligent planning assistant is currently unable to generate a fresh custom plan.
+> **Reason:** ${reason}
+> 
+> * **For Developers:** Please check and verify that your \`GEMINI_API_KEY\` and/or \`GROK_API_KEY\` in your backend \`.env\` file are set, active, and have sufficient billing credits to execute requests.
+> * **For Travelers:** While we wait for the AI endpoints to reset, here is a localized backup itinerary we prepared for you to get started:
+> 
+`;
+        onChunk(apology);
         await this.streamMockSummary(trip, contextString, onChunk, onComplete);
       } else {
         onComplete();
@@ -826,7 +841,26 @@ Do not write a massive month-by-month table or huge essays. Keep the entire resp
     // Call Groq (Llama 3.3) for blazing fast initial generation
     let success = await this.callGrokChatStream('You are an expert travel guide who gives high-impact, engaging and concise seasonal travel advice.', contents, wrapper);
     if (!success) {
-      await this.callGeminiChatStream('You are an expert travel guide who gives high-impact, engaging and concise seasonal travel advice.', contents, wrapper);
+      success = await this.callGeminiChatStream('You are an expert travel guide who gives high-impact, engaging and concise seasonal travel advice.', contents, wrapper);
+    }
+    if (!success) {
+      const geminiKey = this.configService.get<string>('GEMINI_API_KEY');
+      const grokKey = this.configService.get<string>('GROK_API_KEY');
+      let reason = 'The AI model quota limits have been temporarily exceeded or the API services returned a rate limit error (429).';
+      if (!geminiKey && !grokKey) {
+        reason = 'Both GEMINI_API_KEY and GROK_API_KEY are missing from the backend configuration.';
+      }
+      const apology = `
+## 📅 Seasonal Guide Unavailable
+
+We are sincerely sorry, but our seasonal AI advisor is temporarily offline.
+**Reason:** ${reason}
+
+* **For Developers:** Please check that your \`GEMINI_API_KEY\` or \`GROK_API_KEY\` is configured and active in your backend settings.
+* **For Travelers:** Please try checking back later or explore another destination tab!
+`;
+      onChunk(apology);
+      return apology;
     }
     return fullResponse;
   }
