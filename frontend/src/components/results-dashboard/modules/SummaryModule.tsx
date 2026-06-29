@@ -3,6 +3,7 @@
 import { getApiUrl } from '@/utils/api';
 
 import React, { useState, useEffect, useRef } from "react";
+import { useRouter } from "next/navigation";
 import { Sparkles, Send, Bot, User, Share2, AlertTriangle } from "lucide-react";
 import SkeletonLoader from "../SkeletonLoader";
 import { ModuleProps } from "./types";
@@ -14,6 +15,7 @@ interface ChatMessage {
 }
 
 export default function SummaryModule({ tripId }: ModuleProps) {
+    const router = useRouter();
     const [summary, setSummary] = useState("");
     const [isSummaryLoading, setIsSummaryLoading] = useState(true);
     const [chatHistory, setChatHistory] = useState<ChatMessage[]>([]);
@@ -23,6 +25,8 @@ export default function SummaryModule({ tripId }: ModuleProps) {
 
     const chatEndRef = useRef<HTMLDivElement>(null);
     const summaryLoadedRef = useRef(false);
+    // Only auto-scroll after user has explicitly sent a chat message
+    const hasChattedRef = useRef(false);
 
     useEffect(() => {
         // Load chat history from sessionStorage if available
@@ -42,7 +46,10 @@ export default function SummaryModule({ tripId }: ModuleProps) {
     }, [tripId]);
 
     useEffect(() => {
-        chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+        // Only scroll to chat end when user is actively chatting, not during initial summary load
+        if (hasChattedRef.current) {
+            chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+        }
     }, [chatHistory, isChatLoading]);
 
     const fetchSummary = async () => {
@@ -101,6 +108,8 @@ export default function SummaryModule({ tripId }: ModuleProps) {
         const text = chatInput.trim();
         if (!text || isChatLoading) return;
 
+        // Mark that user has started chatting so scroll-to-bottom is enabled
+        hasChattedRef.current = true;
         setChatInput("");
         const newHistory: ChatMessage[] = [...chatHistory, { role: "user", content: text }];
         setChatHistory(newHistory);
@@ -183,10 +192,11 @@ export default function SummaryModule({ tripId }: ModuleProps) {
                     searchParams.set("dates", `${pendingUpdates.fromDate}_${pendingUpdates.toDate}`);
                     searchParams.set("displayDates", `${pendingUpdates.fromDate} - ${pendingUpdates.toDate}`);
                 }
-                
-                // Slight delay so user can read chatbot's confirmation message
+
+                // Use router.replace instead of window.location to avoid full page reload
+                // which would cause the summary to re-fetch and scroll to the top
                 setTimeout(() => {
-                    window.location.search = searchParams.toString();
+                    router.replace(`?${searchParams.toString()}`);
                 }, 1500);
             }
         } catch (error) {
