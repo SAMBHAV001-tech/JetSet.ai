@@ -1,11 +1,40 @@
-# JetSet.AI — The Ultimate Intelligent Travel Companion ✈️
+<p align="center">
+  <img src="./screenshot.png" alt="JetSet.AI Banner" width="100%">
+</p>
 
-![JetSet.AI Homescreen](./screenshot.png)
+<h1 align="center">JetSet.AI</h1>
 
-## 🌐 Deployments
-* **Frontend (Vercel):** [https://jetset-ai.vercel.app](https://jetset-ai.vercel.app)
-* **Backend (Hugging Face Spaces - Docker):** [https://huggingface.co/spaces/SAMBHAV001-tech/JetSet.ai](https://huggingface.co/spaces/SAMBHAV001-tech/JetSet.ai)
-* **Database:** Supabase PostgreSQL Cloud Database
+<p align="center">
+  <strong>Next-Gen AI-Powered Travel Planning Assistant.</strong>
+</p>
+
+<p align="center">
+  <em>Most travel tools show you WHERE to go. JetSet.AI resolves HOW you get there.</em>
+</p>
+
+<p align="center">
+  <a href="https://jetset-ai.vercel.app">
+    <img src="https://img.shields.io/badge/LIVE_DEMO-VERCEL-black?style=for-the-badge&logo=vercel" alt="Live Demo Vercel">
+  </a>
+  <a href="https://huggingface.co/spaces/SAMBHAV001-tech/JetSet.ai">
+    <img src="https://img.shields.io/badge/BACKEND-LIVE-green?style=for-the-badge&logo=docker" alt="Backend Docker">
+  </a>
+  <a href="https://github.com/SAMBHAV001-tech/JetSet.ai">
+    <img src="https://img.shields.io/badge/LICENSE-MIT-blue?style=for-the-badge" alt="License MIT">
+  </a>
+</p>
+
+---
+
+## 🌐 Live Deployment
+
+| Service | URL |
+| :--- | :--- |
+| 🖥️ **Live Dashboard** | [jetset-ai.vercel.app](https://jetset-ai.vercel.app) |
+| ⚙️ **Backend API** | [sambhav001-tech-jetset-ai.hf.space](https://sambhav001-tech-jetset-ai.hf.space) |
+| 💖 **Health Check** | [sambhav001-tech-jetset-ai.hf.space/health](https://sambhav001-tech-jetset-ai.hf.space/health) |
+
+> Cloud deployment includes UptimeRobot monitoring to prevent Hugging Face Space containers from sleeping during evaluations.
 
 ---
 
