@@ -115,3 +115,37 @@ NEXT_PUBLIC_API_URL=http://localhost:3001
 * **Backend:** Build and deploy using the root-level production `Dockerfile` on node alpine to [Hugging Face Spaces](https://huggingface.co/spaces/SamD445/JetSet_AI).
 * **Frontend:** Connect the GitHub repository to [Vercel](https://vercel.com) for automatic CI/CD deployments on every push to `main`.
 * **Uptime Keep-Alive:** To keep the free Hugging Face container awake, set up a free Uptime monitor (e.g. UptimeRobot) pointing to `https://samd445-jetset-ai.hf.space/health` checking every **30 minutes**.
+
+---
+
+## 🧪 Running Your First Trip Plan
+
+If you'd like to test the full end-to-end flow locally:
+
+1. Start the backend — `cd backend && npm run start:dev` (ensure `.env` is configured)
+2. Start the frontend — `cd frontend && npm run dev`
+3. Open [http://localhost:3000](http://localhost:3000) in your browser
+4. Enter your trip details in the wizard:
+   - `Origin` : Your departure city (e.g. `Mumbai`)
+   - `Destination` : Where you want to go (e.g. `Paris`)
+   - `Dates` : Travel window and number of companions
+5. Hit **Plan My Trip** and watch JetSet.AI stream your itinerary, flights, hotels, and season analysis in real time
+
+---
+
+## 🤝 Contributing
+
+Contributions, issues and feature requests are welcome!
+
+1. Fork the repository
+2. Create your feature branch — `git checkout -b feature/AmazingFeature`
+3. Commit your changes — `git commit -m 'feat: Add AmazingFeature'`
+4. Push to the branch — `git push origin feature/AmazingFeature`
+5. Open a Pull Request
+
+---
+
+<p align="center">
+  <sub>Built with ❤️ for travelers, wanderers, and explorers everywhere.</sub>
+</p>
+
