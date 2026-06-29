@@ -1,0 +1,87 @@
+{
+  "PAR": {
+    "destId": "-1456928",
+    "destType": "city",
+    "iataCode": "PAR"
+  },
+  "PARIS": {
+    "destId": "-1456928",
+    "destType": "city",
+    "iataCode": "PAR"
+  },
+  "TYO": {
+    "destId": "-246227",
+    "destType": "city",
+    "iataCode": "TYO"
+  },
+  "TOKYO": {
+    "destId": "-246227",
+    "destType": "city",
+    "iataCode": "TYO"
+  },
+  "NYC": {
+    "destId": "-2601889",
+    "destType": "city",
+    "iataCode": "NYC"
+  },
+  "NEW YORK": {
+    "destId": "-2601889",
+    "destType": "city",
+    "iataCode": "NYC"
+  },
+  "DEL": {
+    "destId": "-2106102",
+    "destType": "city",
+    "iataCode": "DEL"
+  },
+  "DELHI": {
+    "destId": "-2106102",
+    "destType": "city",
+    "iataCode": "DEL"
+  },
+  "BBI": {
+    "destId": "-2091404",
+    "destType": "city",
+    "iataCode": "BBI"
+  },
+  "BHUBANESWAR": {
+    "destId": "-2091404",
+    "destType": "city",
+    "iataCode": "BBI"
+  },
+  "LON": {
+    "destId": "-2601889",
+    "destType": "city",
+    "iataCode": "LON"
+  },
+  "LONDON": {
+    "destId": "-2601889",
+    "destType": "city",
+    "iataCode": "LON"
+  },
+  "PARIS, ILE-DE-FRANCE, FRANCE": {
+    "destId": "-1456928",
+    "destType": "city",
+    "iataCode": "PARIS, ILE-DE-FRANCE, FRANCE"
+  },
+  "TEXAS": {
+    "destId": "20128761",
+    "destType": "city",
+    "iataCode": "TEXAS"
+  },
+  "TEXAS CITY, TEXAS, UNITED STATES": {
+    "destId": "20131822",
+    "destType": "city",
+    "iataCode": "TEXAS CITY, TEXAS, UNITED STATES"
+  },
+  "PARIS, FRANCE": {
+    "destId": "-1456928",
+    "destType": "city",
+    "iataCode": "PARIS, FRANCE"
+  },
+  "MAXICO": {
+    "destId": "13829941",
+    "destType": "hotel",
+    "iataCode": "MAXICO"
+  }
+}

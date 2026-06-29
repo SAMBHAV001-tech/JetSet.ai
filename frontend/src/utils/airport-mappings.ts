@@ -1,8 +1,41 @@
 export const EMERGENCY_HUB = { code: 'LHR', label: 'London Heathrow (LHR)' };
 
+export interface HubInfo {
+    code: string;
+    label: string;
+}
+
+export const getHubForCurrency = (currency?: string): HubInfo => {
+    const code = (currency || 'USD').toUpperCase();
+    switch (code) {
+        case 'INR':
+            return { code: 'DEL', label: 'Indira Gandhi International (DEL)' };
+        case 'GBP':
+            return { code: 'LHR', label: 'London Heathrow (LHR)' };
+        case 'EUR':
+            return { code: 'CDG', label: 'Paris Charles de Gaulle (CDG)' };
+        case 'JPY':
+            return { code: 'HND', label: 'Tokyo Haneda (HND)' };
+        case 'AUD':
+            return { code: 'SYD', label: 'Sydney Kingsford Smith (SYD)' };
+        case 'CAD':
+            return { code: 'YYZ', label: 'Toronto Pearson (YYZ)' };
+        case 'SGD':
+            return { code: 'SIN', label: 'Singapore Changi (SIN)' };
+        case 'AED':
+            return { code: 'DXB', label: 'Dubai International (DXB)' };
+        case 'USD':
+        default:
+            return { code: 'JFK', label: 'New York John F. Kennedy (JFK)' };
+    }
+};
+
 export const MAP_TO_IATA: Record<string, string> = {
     // US & Americas
     "New York": "JFK", "Los Angeles": "LAX", "Chicago": "ORD", "Miami": "MIA", "San Francisco": "SFO",
+    "Dallas": "DFW", "Houston": "IAH", "Texas": "DFW", "Austin": "AUS", "San Antonio": "SAT",
+    "Seattle": "SEA", "Denver": "DEN", "Boston": "BOS", "Atlanta": "ATL", "Phoenix": "PHX",
+    "Las Vegas": "LAS", "Orlando": "MCO", "Washington": "IAD", "Minneapolis": "MSP",
     "Toronto": "YYZ", "Vancouver": "YVR", "Mexico City": "MEX", "Sao Paulo": "GRU",
     // Europe
     "London": "LHR", "Paris": "CDG", "Frankfurt": "FRA", "Amsterdam": "AMS", "Rome": "FCO",
@@ -29,14 +62,32 @@ export const MAP_TO_IATA: Record<string, string> = {
     "Dubai": "DXB", "Doha": "DOH", "Abu Dhabi": "AUH", "Istanbul": "IST", "Cairo": "CAI",
     "Johannesburg": "JNB", "Cape Town": "CPT",
     // Defaults/Fallbacks
-    "India": "DEL", "USA": "JFK", "UK": "LHR"
+    "India": "DEL", "USA": "JFK", "UK": "LHR",
+    "United States": "JFK", "United Kingdom": "LHR", "Australia": "SYD",
+    "Canada": "YYZ", "Germany": "FRA", "France": "CDG", "Japan": "NRT",
+    "Qatar": "DOH", "Saudi Arabia": "RUH", "Kuwait": "KWI", "Bahrain": "BAH",
+    "Colombo": "CMB", "Sri Lanka": "CMB", "Dhaka": "DAC", "Bangladesh": "DAC",
+    "Kathmandu": "KTM", "Nepal": "KTM", "Karachi": "KHI", "Islamabad": "ISB",
+    "Lagos": "LOS", "Nairobi": "NBO", "Addis Ababa": "ADD",
+    // Himalayan & Tibetan routes
+    "Simikot": "IMK", "Hilsa": "IMK",
+    "Nepalganj": "KEP", "Nepalgunj": "KEP",
+    "Kailash Mansarovar": "GXQ", "Kailash Mansrovar": "GXQ",
+    "Kailash": "GXQ", "Mansarovar": "GXQ",
+    "Darchen": "GXQ", "Taklakot": "GXQ", "Purang": "GXQ",
+    "Lhasa": "LXA", "Shigatse": "RKZ", "Nyalam": "GXQ",
+    "Ali": "GXQ", "Tibet": "GXQ",
+    "Leh": "IXL", "Ladakh": "IXL", "Manali": "KUU",
+    "Shimla": "SLV", "Dharamshala": "DHM", "Dharamsala": "DHM",
+    "Haridwar": "DED", "Rishikesh": "DED",
+    "Cuttack": "BBI", "Pokhara": "PKR"
 };
 
 /**
  * Normalizes an origin/destination string to a valid IATA code.
  * Reverts to "DEL" (or another default) if no mapping is found.
  */
-export const getIataCode = (location: string, fallback: string = "DEL"): string => {
+export const getIataCode = (location: string, fallback: string = "DEL", allowCountryFallback: boolean = true): string => {
     if (!location) return fallback;
     const cleanLocation = location.trim();
     // Check if user literally typed "JFK" or something exactly 3 letters first.
@@ -53,13 +104,32 @@ export const getIataCode = (location: string, fallback: string = "DEL"): string 
         }
     }
 
-    // 2. Longest-key partial match (e.g. prioritize "Mopa" sorting logic if embedded)
+    // List of country keys in MAP_TO_IATA to separate from cities
+    const countries = [
+        "india", "usa", "uk", "united states", "united kingdom", "australia",
+        "canada", "germany", "france", "japan", "qatar", "saudi arabia", "kuwait",
+        "bahrain", "colombo", "sri lanka", "dhaka", "bangladesh", "kathmandu", "nepal",
+        "karachi", "islamabad", "lagos", "nairobi", "addis ababa"
+    ];
+
+    // 2. Longest-key partial match (excluding country fallbacks to prevent wrong resolution)
     const sortedKeys = Object.keys(MAP_TO_IATA).sort((a, b) => b.length - a.length);
     for (const key of sortedKeys) {
+        if (countries.includes(key.toLowerCase())) continue;
         if (lowerLocation.includes(key.toLowerCase())) {
             return MAP_TO_IATA[key];
         }
     }
 
-    return fallback;
+    // 3. Last resort: Country fallback match (only if allowed)
+    if (allowCountryFallback) {
+        for (const key of sortedKeys) {
+            if (!countries.includes(key.toLowerCase())) continue;
+            if (lowerLocation.includes(key.toLowerCase())) {
+                return MAP_TO_IATA[key];
+            }
+        }
+    }
+
+    return allowCountryFallback ? fallback : "";
 };

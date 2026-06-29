@@ -111,11 +111,11 @@ function Calendar({
           defaultClassNames.day
         ),
         range_start: cn(
-          "rounded-l-md bg-accent",
+          "rounded-l-full bg-primary/25",
           defaultClassNames.range_start
         ),
-        range_middle: cn("rounded-none", defaultClassNames.range_middle),
-        range_end: cn("rounded-r-md bg-accent", defaultClassNames.range_end),
+        range_middle: cn("rounded-none bg-primary/25", defaultClassNames.range_middle),
+        range_end: cn("rounded-r-full bg-primary/25", defaultClassNames.range_end),
         today: cn(
           "rounded-md bg-accent text-accent-foreground data-[selected=true]:rounded-none",
           defaultClassNames.today
@@ -208,7 +208,19 @@ function CalendarDayButton({
       data-range-end={modifiers.range_end}
       data-range-middle={modifiers.range_middle}
       className={cn(
-        "flex aspect-square size-auto w-full min-w-(--cell-size) flex-col gap-1 leading-none font-normal group-data-[focused=true]/day:relative group-data-[focused=true]/day:z-10 group-data-[focused=true]/day:border-ring group-data-[focused=true]/day:ring-[3px] group-data-[focused=true]/day:ring-ring/50 data-[range-end=true]:rounded-md data-[range-end=true]:rounded-r-md data-[range-end=true]:bg-primary data-[range-end=true]:text-primary-foreground data-[range-middle=true]:rounded-none data-[range-middle=true]:bg-accent data-[range-middle=true]:text-accent-foreground data-[range-start=true]:rounded-md data-[range-start=true]:rounded-l-md data-[range-start=true]:bg-primary data-[range-start=true]:text-primary-foreground data-[selected-single=true]:bg-primary data-[selected-single=true]:text-primary-foreground dark:hover:text-accent-foreground [&>span]:text-xs [&>span]:opacity-70",
+        // Base
+        "flex aspect-square size-auto w-full min-w-(--cell-size) flex-col gap-1 leading-none font-normal",
+        "group-data-[focused=true]/day:relative group-data-[focused=true]/day:z-10",
+        // Single selected day — full rounded pill
+        "data-[selected-single=true]:rounded-full data-[selected-single=true]:bg-primary data-[selected-single=true]:text-primary-foreground",
+        // Range start — left rounded, right flat, blue bg
+        "data-[range-start=true]:rounded-l-full data-[range-start=true]:rounded-r-none data-[range-start=true]:bg-primary data-[range-start=true]:text-primary-foreground",
+        // Range end — right rounded, left flat, blue bg
+        "data-[range-end=true]:rounded-r-full data-[range-end=true]:rounded-l-none data-[range-end=true]:bg-primary data-[range-end=true]:text-primary-foreground",
+        // Range middle — no rounding, softer blue fill that connects seamlessly
+        "data-[range-middle=true]:rounded-none data-[range-middle=true]:bg-primary/25 data-[range-middle=true]:text-primary-foreground data-[range-middle=true]:hover:bg-primary/35",
+        // Sub-event text
+        "[&>span]:text-xs [&>span]:opacity-70",
         defaultClassNames.day,
         className
       )}
@@ -216,5 +228,6 @@ function CalendarDayButton({
     />
   )
 }
+
 
 export { Calendar, CalendarDayButton }

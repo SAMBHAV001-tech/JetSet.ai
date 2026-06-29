@@ -3,151 +3,382 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import SkeletonLoader from "../SkeletonLoader";
 import { ModuleProps } from "./types";
-import HotelSearchForm from "./hotels/HotelSearchForm";
 import HotelCard, { HotelData } from "./hotels/HotelCard";
+import HotelMap from "./hotels/HotelMap";
+import { MapPin, CalendarDays, Loader2, RefreshCw } from "lucide-react";
 
-export default function HotelsModule({ tripId, dest, dates }: ModuleProps) {
-    const [isLoading, setIsLoading] = useState(false);
-    const [hotels, setHotels] = useState<HotelData[]>([]);
-    const [error, setError] = useState<string | null>(null);
-    const [selectedHotelId, setSelectedHotelId] = useState<string | null>(null);
-    const [currentCityCode, setCurrentCityCode] = useState<string>("");
-    const lastAutoSearchedKey = useRef<string>("");
-    const searchAbortRef = useRef<AbortController | null>(null);
+// ─── Types ───────────────────────────────────────────────────────────────────
 
-    const handleSearch = useCallback(async (cityCode: string) => {
-        // Abort any in-flight search
-        if (searchAbortRef.current) {
-            searchAbortRef.current.abort();
-        }
-        const controller = new AbortController();
-        searchAbortRef.current = controller;
+interface ItineraryStop {
+    city: string;
+    dayStart: number;
+    dayEnd: number;
+    checkin: string;
+    checkout: string;
+    displayCheckin: string;
+    displayCheckout: string;
+}
 
-        setIsLoading(true);
-        setError(null);
+interface StopHotelState {
+    isLoading: boolean;
+    hotels: HotelData[];
+    error: string | null;
+    selectedHotelId: string | null;
+    cityCode: string;
+}
+
+// ─── HotelsModule ─────────────────────────────────────────────────────────────
+
+export default function HotelsModule({ tripId, dest, dates, curr }: ModuleProps) {
+    const [tripData, setTripData] = useState<any>(null);
+    const [stops, setStops] = useState<ItineraryStop[]>([]);
+    const [stopsStatus, setStopsStatus] = useState<"idle" | "loading" | "pending" | "ready" | "error">("idle");
+    const [activeTab, setActiveTab] = useState(0);
+    const [stopStates, setStopStates] = useState<Record<number, StopHotelState>>({});
+    const fetchedKeys = useRef<Set<string>>(new Set());
+    const pollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const pollCountRef = useRef(0);
+    const MAX_POLL = 15; // max ~45 seconds polling
+
+    const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
+
+    // ── 1. Load tripData ─────────────────────────────────────────────────────
+    useEffect(() => {
+        if (!tripId) return;
+        fetch(API + "/trips/" + tripId)
+            .then(r => r.ok ? r.json() : null)
+            .then(d => d && setTripData(d))
+            .catch(() => {});
+    }, [tripId, API]);
+
+    // ── 2. Fetch itinerary stops from Gemini endpoint ────────────────────────
+    const fetchStops = useCallback(async () => {
+        if (!tripId) return;
+        setStopsStatus("loading");
         try {
-            // /hotels/by-city only accepts cityCode; date/guest filters
-            // are handled by the separate /hotels/offers endpoint
-            const res = await fetch(
-                `${process.env.NEXT_PUBLIC_API_URL}/hotels/by-city?cityCode=${encodeURIComponent(cityCode)}`,
-                { signal: controller.signal }
-            );
-            if (!res.ok) throw new Error("Failed to fetch hotels");
+            const res = await fetch(API + "/trips/" + tripId + "/itinerary-stops");
+            if (!res.ok) throw new Error("endpoint error");
             const data = await res.json();
 
-            // If this request was superseded, bail out
-            if (searchAbortRef.current !== controller) return;
-
-            const formattedHotels: HotelData[] = (data.data || []).map((h: any) => ({
-                hotelId: h.hotelId,
-                name: h.name,
-                latitude: h.geoCode?.latitude,
-                longitude: h.geoCode?.longitude,
-                distance: h.distance?.value,
-            }));
-            formattedHotels.sort((a, b) => {
-                if (a.distance == null) return 1;
-                if (b.distance == null) return -1;
-                return a.distance - b.distance;
-            });
-
-            setHotels(formattedHotels);
-            setCurrentCityCode(cityCode);
-            setSelectedHotelId(null);
-        } catch (err: any) {
-            if (err.name === 'AbortError') return; // superseded, ignore
-            setError(err.message || "An error occurred");
-            setHotels([]);
-            setCurrentCityCode("");
-            setSelectedHotelId(null);
-        } finally {
-            if (searchAbortRef.current === controller) {
-                setIsLoading(false);
+            if (data.status === "pending") {
+                setStopsStatus("pending");
+                return;
             }
+
+            const rawStops: ItineraryStop[] = data.stops || [];
+            setStops(rawStops);
+            setStopsStatus("ready");
+            setActiveTab(0);
+            fetchedKeys.current.clear(); // clear so tabs re-fetch on new stops
+        } catch {
+            setStopsStatus("error");
         }
-    }, []);
+    }, [tripId, API]);
 
     useEffect(() => {
-        if (!dest) return;
-        const key = `${dest}|${dates ?? ''}`;
-        if (lastAutoSearchedKey.current === key) return;
+        if (tripId) fetchStops();
+    }, [tripId, fetchStops]);
 
-        const extractCode = (str: string) => {
-            const match = str.match(/\b([A-Z]{3})\b/);
-            return match ? match[1] : null;
-        };
-
-        const cityCode = extractCode(dest);
-        if (cityCode) {
-            lastAutoSearchedKey.current = key;
-            handleSearch(cityCode);
+    // ── 3. Poll if plan is still being generated ──────────────────────────────
+    useEffect(() => {
+        if (stopsStatus !== "pending") {
+            if (pollTimerRef.current) clearTimeout(pollTimerRef.current);
+            pollCountRef.current = 0;
             return;
         }
+        if (pollCountRef.current >= MAX_POLL) {
+            setStopsStatus("error");
+            return;
+        }
+        pollTimerRef.current = setTimeout(async () => {
+            pollCountRef.current++;
+            await fetchStops();
+        }, 3000);
+        return () => { if (pollTimerRef.current) clearTimeout(pollTimerRef.current); };
+    }, [stopsStatus, fetchStops]);
 
-        // For plain-text destinations (e.g. "Tokyo, Japan"), resolve via autocomplete
-        const resolveAndSearch = async () => {
-            try {
-                const params = new URLSearchParams({ keyword: dest }).toString();
-                const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/hotels/autocomplete?${params}`);
-                if (res.ok) {
-                    const data = await res.json();
-                    const first = (data.data || [])[0];
-                    const resolved = first?.address?.cityCode || first?.iataCode;
-                    if (resolved) {
-                        lastAutoSearchedKey.current = key;
-                        handleSearch(resolved);
-                    }
-                }
-            } catch {
-                // Autocomplete resolve failed; user can still search manually
+    // ── 4. Resolve city → IATA code ──────────────────────────────────────────
+    const resolveCityCode = useCallback(async (city: string): Promise<string> => {
+        const m = city.match(/\b([A-Z]{3})\b/);
+        if (m) return m[1];
+        try {
+            const res = await fetch(API + "/hotels/autocomplete?" + new URLSearchParams({ keyword: city }));
+            if (res.ok) {
+                const d = await res.json();
+                const f = (d.data || [])[0];
+                return f?.address?.cityCode || f?.iataCode || city;
             }
-        };
-        resolveAndSearch();
-    }, [dest, dates, handleSearch]);
+        } catch { /**/ }
+        return city;
+    }, [API]);
+
+    // ── 5. Fetch hotels for a single stop (with AI scoring) ──────────────────
+    const fetchStop = useCallback(async (idx: number, stop: ItineraryStop) => {
+        const key = `${idx}#${stop.city}#${stop.checkin}`;
+        if (fetchedKeys.current.has(key)) return;
+        fetchedKeys.current.add(key);
+
+        setStopStates(p => ({
+            ...p,
+            [idx]: { isLoading: true, hotels: [], error: null, selectedHotelId: null, cityCode: "" },
+        }));
+
+        try {
+            const cc = await resolveCityCode(stop.city);
+            const qp = new URLSearchParams({ 
+                cityCode: cc,
+                cityName: stop.city
+            });
+            if (stop.checkin)  qp.append("checkin", stop.checkin);
+            if (stop.checkout) qp.append("checkout", stop.checkout);
+            if (tripId)        qp.append("tripId", tripId);
+            if (curr)          qp.append("curr", curr);
+
+            const res = await fetch(API + "/hotels/by-city?" + qp.toString());
+            if (!res.ok) throw new Error("Hotel fetch failed");
+            const d = await res.json();
+
+            const hotels: HotelData[] = (d.data || []).map((h: any) => ({
+                hotelId:     h.hotelId,
+                name:        h.name,
+                latitude:    h.geoCode?.latitude,
+                longitude:   h.geoCode?.longitude,
+                distance:    h.distance?.value,
+                rating:      h.rating,
+                price:       h.price,
+                matchScore:  h.matchScore,
+                matchReason: h.matchReason,
+            }));
+
+            // Sort: AI match score → rating → price
+            hotels.sort((a, b) => {
+                const scoreDiff = (b.matchScore || 0) - (a.matchScore || 0);
+                if (scoreDiff !== 0) return scoreDiff;
+                const ratingDiff = (b.rating || 0) - (a.rating || 0);
+                if (ratingDiff !== 0) return ratingDiff;
+                return (Number(a.price) || 9999) - (Number(b.price) || 9999);
+            });
+
+            setStopStates(p => ({
+                ...p,
+                [idx]: { isLoading: false, hotels, error: null, selectedHotelId: null, cityCode: cc },
+            }));
+        } catch (e: any) {
+            setStopStates(p => ({
+                ...p,
+                [idx]: { isLoading: false, hotels: [], error: e.message || "Error loading stays", selectedHotelId: null, cityCode: "" },
+            }));
+        }
+    }, [tripId, curr, resolveCityCode, API]);
+
+    // ── 6. Trigger hotel fetch when active tab changes ────────────────────────
+    useEffect(() => {
+        if (stops.length === 0) return;
+        const stop = stops[activeTab];
+        if (stop) fetchStop(activeTab, stop);
+    }, [activeTab, stops, fetchStop]);
+
+    // Also prefetch the first tab when stops first arrive
+    useEffect(() => {
+        if (stops.length > 0) fetchStop(0, stops[0]);
+    }, [stops]); // eslint-disable-line
+
+    const selectHotel = (idx: number, hotelId: string | null) =>
+        setStopStates(p => ({ ...p, [idx]: { ...p[idx], selectedHotelId: hotelId } }));
+
+    const totalOptions = Object.values(stopStates).reduce((s, st) => s + (st.hotels?.length || 0), 0);
+    const activeState = stopStates[activeTab];
+    const activeStop  = stops[activeTab];
+
+    // ── Render: pending / error states ───────────────────────────────────────
+
+    if (stopsStatus === "idle" || stopsStatus === "loading") {
+        return (
+            <div className="w-full h-full pb-10">
+                <div className="flex justify-between items-center mb-8">
+                    <h2 className="text-xl font-bold text-white flex items-baseline gap-2">
+                        Stays by Itinerary
+                        <span className="text-white/40 text-base font-normal">(loading…)</span>
+                    </h2>
+                </div>
+                <div className="flex gap-2 mb-6">
+                    {[1, 2, 3].map(i => (
+                        <div key={i} className="h-10 w-28 rounded-full bg-white/5 animate-pulse" />
+                    ))}
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {[1, 2, 3, 4].map(i => <SkeletonLoader key={i} type="hotels" />)}
+                </div>
+            </div>
+        );
+    }
+
+    if (stopsStatus === "pending") {
+        return (
+            <div className="w-full h-full pb-10">
+                <div className="flex justify-between items-center mb-8">
+                    <h2 className="text-xl font-bold text-white">Stays by Itinerary</h2>
+                </div>
+                <div className="glass-panel rounded-2xl p-10 flex flex-col items-center justify-center gap-4 border border-white/10">
+                    <div className="w-12 h-12 rounded-full bg-sky-500/15 flex items-center justify-center">
+                        <Loader2 className="w-6 h-6 text-sky-400 animate-spin" />
+                    </div>
+                    <div className="text-center">
+                        <p className="text-white font-semibold">Generating Your Travel Plan…</p>
+                        <p className="text-white/50 text-sm mt-1">
+                            AI is crafting your itinerary. Hotels will load automatically once ready.
+                        </p>
+                    </div>
+                    <div className="flex gap-1 mt-2">
+                        {[0, 1, 2].map(i => (
+                            <div key={i} className="w-2 h-2 rounded-full bg-sky-400/60 animate-bounce"
+                                style={{ animationDelay: `${i * 0.15}s` }} />
+                        ))}
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
+    if (stopsStatus === "error" || stops.length === 0) {
+        return (
+            <div className="w-full h-full pb-10">
+                <div className="flex justify-between items-center mb-8">
+                    <h2 className="text-xl font-bold text-white">Stays by Itinerary</h2>
+                </div>
+                <div className="glass-panel rounded-2xl p-8 flex flex-col items-center gap-4 border border-red-500/20">
+                    <p className="text-white/60 text-sm">Could not load itinerary stops.</p>
+                    <button
+                        onClick={() => { fetchedKeys.current.clear(); fetchStops(); }}
+                        className="flex items-center gap-2 px-4 py-2 rounded-lg bg-white/10 hover:bg-white/15 text-white/70 text-sm transition-all"
+                    >
+                        <RefreshCw className="w-4 h-4" /> Retry
+                    </button>
+                </div>
+            </div>
+        );
+    }
+
+    // ── Render: tab UI ────────────────────────────────────────────────────────
 
     return (
         <div className="w-full h-full pb-10">
-            <HotelSearchForm onSearch={handleSearch} isLoading={isLoading} />
-
+            {/* Header */}
             <div className="flex justify-between items-center mb-6">
                 <h2 className="text-xl font-bold text-white flex items-baseline gap-2">
-                    Available Stays
-                    <span className="text-white/40 text-base font-normal">({hotels.length})</span>
+                    Stays by Itinerary
+                    <span className="text-white/40 text-base font-normal">
+                        ({totalOptions} options across {stops.length} {stops.length === 1 ? "stop" : "stops"})
+                    </span>
                 </h2>
             </div>
 
-            {error && (
-                <div className="bg-red-500/10 border border-red-500/20 text-red-400 p-4 rounded-xl mb-6">
-                    {error}
+            {/* Tab Pills */}
+            <div className="flex flex-wrap gap-2 mb-7 pb-4 border-b border-white/10">
+                {stops.map((stop, idx) => {
+                    const isActive = idx === activeTab;
+                    const dayLabel = stop.dayStart === stop.dayEnd
+                        ? `Day ${stop.dayStart}`
+                        : `Days ${stop.dayStart}–${stop.dayEnd}`;
+                    return (
+                        <button
+                            key={idx}
+                            onClick={() => setActiveTab(idx)}
+                            className={[
+                                "flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 border whitespace-nowrap",
+                                isActive
+                                    ? "bg-emerald-500/20 border-emerald-500/50 text-emerald-300 shadow-lg shadow-emerald-500/10"
+                                    : "bg-white/5 border-white/10 text-white/60 hover:bg-white/10 hover:text-white/80",
+                            ].join(" ")}
+                        >
+                            <MapPin className={`w-3.5 h-3.5 ${isActive ? "text-emerald-400" : "text-white/40"}`} />
+                            <span>{stop.city}</span>
+                            <span className={`text-xs px-1.5 py-0.5 rounded-full ${isActive ? "bg-emerald-500/30 text-emerald-300" : "bg-white/10 text-white/40"}`}>
+                                {dayLabel}
+                            </span>
+                        </button>
+                    );
+                })}
+            </div>
+
+            {/* Active Stop Details */}
+            {activeStop && (
+                <div className="flex items-center gap-3 mb-5">
+                    <div className="w-9 h-9 rounded-full bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center shrink-0">
+                        <MapPin className="w-4 h-4 text-emerald-400" />
+                    </div>
+                    <div>
+                        <h3 className="text-base font-semibold text-white leading-tight">{activeStop.city}</h3>
+                        {activeStop.displayCheckin && activeStop.displayCheckout && (
+                            <div className="flex items-center gap-1.5 text-xs text-white/40 mt-0.5">
+                                <CalendarDays className="w-3 h-3" />
+                                <span>
+                                    {activeStop.dayStart === activeStop.dayEnd
+                                        ? `Day ${activeStop.dayStart}`
+                                        : `Days ${activeStop.dayStart}–${activeStop.dayEnd}`}
+                                    {" · "}
+                                    {activeStop.displayCheckin} → {activeStop.displayCheckout}
+                                </span>
+                            </div>
+                        )}
+                    </div>
                 </div>
             )}
 
-            <div className="w-full">
-                {isLoading ? (
-                    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-                        {[1, 2, 3, 4, 5, 6].map(i => (
-                            <SkeletonLoader key={i} type="hotels" />
-                        ))}
+            {/* Hotel Cards + Map */}
+            {(!activeState || activeState.isLoading) ? (
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <div className="lg:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {[1, 2, 3, 4].map(i => <SkeletonLoader key={i} type="hotels" />)}
                     </div>
-                ) : hotels.length > 0 ? (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                        {hotels.map((hotel, i) => (
+                    <div className="lg:col-span-1 h-[520px] rounded-2xl bg-white/5 animate-pulse" />
+                </div>
+            ) : activeState.error ? (
+                <div className="glass-panel p-6 rounded-2xl border border-red-500/20">
+                    <p className="text-red-400 text-sm">{activeState.error}</p>
+                    <button
+                        onClick={() => {
+                            const key = `${activeTab}#${activeStop?.city}#${activeStop?.checkin}`;
+                            fetchedKeys.current.delete(key);
+                            if (activeStop) fetchStop(activeTab, activeStop);
+                        }}
+                        className="mt-3 flex items-center gap-2 text-xs text-white/50 hover:text-white/80 transition-colors"
+                    >
+                        <RefreshCw className="w-3 h-3" /> Try again
+                    </button>
+                </div>
+            ) : activeState.hotels.length === 0 ? (
+                <div className="glass-panel p-8 text-center text-white/40 text-sm rounded-2xl border border-white/10">
+                    <MapPin className="w-8 h-8 mx-auto mb-3 text-white/20" />
+                    <p>No stays found for <strong className="text-white/60">{activeStop?.city}</strong>.</p>
+                    <p className="text-xs mt-1 text-white/30">This city may not have bookable hotels in the API yet.</p>
+                </div>
+            ) : (
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    {/* Hotel Cards */}
+                    <div className="lg:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-4 max-h-[580px] overflow-y-auto pr-1 custom-scrollbar">
+                        {activeState.hotels.map((hotel, i) => (
                             <HotelCard
-                                key={hotel.hotelId}
+                                key={hotel.hotelId + "-" + i}
                                 hotel={hotel}
-                                isSelected={selectedHotelId === hotel.hotelId}
-                                onClick={() => setSelectedHotelId(hotel.hotelId)}
-                                cityCode={currentCityCode}
+                                isSelected={activeState.selectedHotelId === hotel.hotelId}
+                                onClick={() => selectHotel(activeTab, hotel.hotelId === activeState.selectedHotelId ? null : hotel.hotelId)}
+                                cityCode={activeState.cityCode}
+                                checkin={activeStop?.checkin}
+                                checkout={activeStop?.checkout}
+                                curr={curr}
                             />
                         ))}
                     </div>
-                ) : (
-                    <div className="glass-panel p-8 text-center text-white/50 flex flex-col items-center justify-center h-40">
-                        <p>Enter a destination to see hotels</p>
+                    {/* Map */}
+                    <div className="lg:col-span-1 h-[580px] rounded-2xl overflow-hidden glass-panel border border-white/10 relative">
+                        <HotelMap
+                            hotels={activeState.hotels}
+                            selectedHotelId={activeState.selectedHotelId}
+                        />
                     </div>
-                )}
-            </div>
+                </div>
+            )}
         </div>
     );
 }
-

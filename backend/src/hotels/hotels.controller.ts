@@ -14,11 +14,18 @@ export class HotelsController {
     }
 
     @Get('by-city')
-    async getHotelsByCity(@Query('cityCode') cityCode: string) {
+    async getHotelsByCity(
+        @Query('cityCode') cityCode: string,
+        @Query('cityName') cityName?: string,
+        @Query('checkin') checkin?: string,
+        @Query('checkout') checkout?: string,
+        @Query('tripId') tripId?: string,
+        @Query('curr') curr?: string,
+    ) {
         if (!cityCode) {
             throw new HttpException('City code is required', HttpStatus.BAD_REQUEST);
         }
-        return this.hotelsService.getHotelsByCity(cityCode);
+        return this.hotelsService.getHotelsByCity(cityCode, checkin, checkout, tripId, curr, cityName);
     }
 
     @Get('offers')

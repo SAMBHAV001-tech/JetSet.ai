@@ -1,4 +1,4 @@
-import { Controller, Get, Query, UseInterceptors } from '@nestjs/common';
+import { Controller, Get, Post, Body, Query, UseInterceptors } from '@nestjs/common';
 import { CacheInterceptor, CacheTTL } from '@nestjs/cache-manager';
 import { DestinationsService } from './destinations.service';
 
@@ -15,4 +15,21 @@ export class DestinationsController {
         // We can explicitly define the cache key based on the query to prevent collisions
         return this.destinationsService.searchDestinations(query);
     }
+
+    @Get('resolve-airport')
+    @UseInterceptors(CacheInterceptor)
+    @CacheTTL(604800000)
+    async resolveAirport(@Query('location') location: string) {
+        if (!location) return { iata: null };
+        const iata = await this.destinationsService.resolveIataCode(location);
+        return { iata };
+    }
+
+    @Post('validate')
+    async validate(@Body() body: { location: string }) {
+        if (!body.location) return { isValid: false };
+        const isValid = await this.destinationsService.validateLocationOnEarth(body.location);
+        return { isValid };
+    }
 }
+

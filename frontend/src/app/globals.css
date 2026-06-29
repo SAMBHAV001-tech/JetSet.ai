@@ -9,6 +9,7 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-dm-sans), ui-sans-serif, system-ui, sans-serif;
   --font-display: var(--font-syne), ui-sans-serif, system-ui, sans-serif;
+  --font-syne: var(--font-syne), ui-sans-serif, system-ui, sans-serif;
   --font-mono: var(--font-jetbrains-mono), ui-monospace, SFMono-Regular, monospace;
 
   --color-ink-900: var(--ink-900);
@@ -159,15 +160,66 @@
     backdrop-filter: blur(16px);
     -webkit-backdrop-filter: blur(16px);
   }
+
+  .autocomplete-dropdown {
+    background: #0a1020;
+    border: 1px solid rgba(56, 189, 248, 0.25);
+    box-shadow: 0 16px 48px rgba(0, 0, 0, 0.75), 0 0 0 1px rgba(255,255,255,0.06);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    z-index: 9999;
+  }
+
+  .select-text, .select-text * {
+    user-select: text !important;
+    -webkit-user-select: text !important;
+  }
+
+  /* Invisible / minimal scrollbar — used across panels, chat, hotel list */
+  .custom-scrollbar {
+    scrollbar-width: thin;
+    scrollbar-color: transparent transparent;
+  }
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 4px;
+  }
+  .custom-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.08);
+    border-radius: 999px;
+  }
+  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.18);
+  }
+
+  /* Completely hidden scrollbar (for drawers/overlays) */
+  .no-scrollbar {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
 }
 
 @layer base {
   * {
     @apply border-border outline-ring/50;
+    user-select: none;
+    -webkit-user-select: none;
+    line-height: 1.45; /* Set a default line-height to prevent vertical text clipping */
+  }
+
+  input, textarea, [contenteditable="true"] {
+    user-select: text;
+    -webkit-user-select: text;
   }
 
   body {
     @apply bg-background text-foreground font-sans;
+    line-height: 1.6;
   }
 
   h1,
@@ -175,7 +227,31 @@
   h3,
   h4,
   h5,
-  h6 {
+  h6,
+  .font-syne,
+  .font-display {
     @apply font-display font-bold;
+    line-height: 1.35;
+    padding-bottom: 0.08em; /* Gives vital vertical space so descenders are never cut off */
+  }
+
+  /* All interactive elements should show pointer cursor */
+  button,
+  a,
+  [role="button"],
+  [role="tab"],
+  [role="menuitem"],
+  [role="option"],
+  label[for],
+  select,
+  summary,
+  [tabindex]:not([tabindex="-1"]) {
+    cursor: pointer;
+  }
+
+  /* Disabled elements revert to not-allowed */
+  button:disabled,
+  [aria-disabled="true"] {
+    cursor: not-allowed;
   }
 }

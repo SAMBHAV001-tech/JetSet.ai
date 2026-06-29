@@ -1,137 +1,352 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import {
+    ExternalLink, Search, Plane, CalendarDays,
+    Loader2, RefreshCw,
+} from "lucide-react";
 import SkeletonLoader from "../SkeletonLoader";
 import { ModuleProps } from "./types";
-import { useFlights, FlightSearchParams } from "@/hooks/useFlights";
 import { useUserCurrency } from "@/hooks/useUserCurrency";
 import { FlightCard } from "@/components/flights/FlightCard";
 import { FlightFilters, SortOption } from "@/components/flights/FlightFilters";
 import { compareFlights } from "@/utils/flight-utils";
-import { getIataCode } from "@/utils/airport-mappings";
 
-const parseDepartureDate = (datesStr: string) => {
-    try {
-        if (!datesStr) throw new Error("Empty date string");
+// ─── Types ────────────────────────────────────────────────────────────────────
 
-        // Exact format: YYYY-MM-DD
-        const parts = datesStr.split("_");
-        const depDate = parts[0];
-        if (/^\d{4}-\d{2}-\d{2}$/.test(depDate)) {
-            return depDate;
-        }
+interface FlightLegItem {
+    legNum: number;
+    from: string;
+    fromIata: string;
+    to: string;
+    toIata: string;
+    date: string;
+    note?: string;
+}
 
-        // Fallback for "Oct 12 - Oct 15" format
-        const oldParts = datesStr.split("-");
-        const startDateStr = oldParts[0].trim();
-        const year = new Date().getFullYear();
-        const dateObj = new Date(`${startDateStr} ${year}`);
+interface FlightLegsData {
+    gateway: string;
+    gatewayIata: string;
+    outbound: FlightLegItem[];
+    return: FlightLegItem[];
+    groundSegments: string[];
+}
 
-        // Return YYYY-MM-DD
-        const yyyy = dateObj.getFullYear();
-        const mm = String(dateObj.getMonth() + 1).padStart(2, '0');
-        const dd = String(dateObj.getDate()).padStart(2, '0');
-        return `${yyyy}-${mm}-${dd}`;
-    } catch (e) {
-        // Fallback to today + 7 days
-        const d = new Date();
-        d.setDate(d.getDate() + 7);
-        const yyyy = d.getFullYear();
-        const mm = String(d.getMonth() + 1).padStart(2, '0');
-        const dd = String(d.getDate()).padStart(2, '0');
-        return `${yyyy}-${mm}-${dd}`;
-    }
+interface LegState {
+    isLoading: boolean;
+    flights: any[];
+    error: string | null;
+}
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+const fmtDisplay = (iso: string): string => {
+    if (!iso) return "";
+    const d = new Date(iso);
+    return isNaN(d.getTime()) ? iso : d.toLocaleDateString("en-GB", { day: "numeric", month: "short" });
 };
 
+// ─── Booking Links ────────────────────────────────────────────────────────────
+
+function DirectBookingLinks({ orgCode, destCode, travelDate }: { orgCode: string; destCode: string; travelDate: string }) {
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    let bookDate = travelDate ? new Date(travelDate) : new Date(today.getTime() + 7 * 86400000);
+    if (isNaN(bookDate.getTime()) || bookDate <= today) bookDate = new Date(today.getTime() + 7 * 86400000);
+    const y = bookDate.getFullYear();
+    const m = String(bookDate.getMonth() + 1).padStart(2, "0");
+    const d = String(bookDate.getDate()).padStart(2, "0");
+
+    const links = [
+        { name: "MakeMyTrip", url: `https://www.makemytrip.com/flight/search?itinerary=${orgCode}-${destCode}-${d}/${m}/${y}&tripType=O&paxType=A-1_C-0_I-0&intl=true&cabinClass=E` },
+        { name: "Ixigo",      url: `https://www.ixigo.com/search/result/flight?from=${orgCode}&to=${destCode}&date=${y}-${m}-${d}&adults=1&children=0&infants=0&class=e` },
+        { name: "Goibibo",    url: `https://www.goibibo.com/flights/air-${orgCode}-${destCode}-${y}${m}${d}--1-0-0-E-D/` },
+    ];
+
+    return (
+        <div className="flex flex-wrap gap-2 mt-2 justify-center">
+            {links.map(l => (
+                <a key={l.name} href={l.url} target="_blank" rel="noopener noreferrer"
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/5 border border-white/10 text-white/70 hover:text-white hover:border-white/20 hover:bg-white/10 transition-all text-xs font-semibold">
+                    <ExternalLink className="w-3 h-3" />
+                    {l.name}
+                </a>
+            ))}
+        </div>
+    );
+}
+
+// ─── FlightsModule ────────────────────────────────────────────────────────────
+
 export default function FlightsModule({ tripId, org, dest, dates, curr }: ModuleProps) {
-    const defaultOrg = org ? decodeURIComponent(org) : "London";
-    const defaultDest = dest ? decodeURIComponent(dest) : "Paris";
-    const defaultDates = dates ? decodeURIComponent(dates) : "";
     const localeCurrency = useUserCurrency();
-    const finalCurrency = curr || localeCurrency;
+    const finalCurrency  = curr || localeCurrency;
+    const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
 
-    const [searchParams, setSearchParams] = useState<FlightSearchParams | null>(null);
+    const [legsData,    setLegsData]    = useState<FlightLegsData | null>(null);
+    const [legsStatus,  setLegsStatus]  = useState<"idle" | "loading" | "pending" | "ready" | "error">("idle");
+    const [legStates,   setLegStates]   = useState<Record<string, LegState>>({});
+    const [activeTab,   setActiveTab]   = useState<number>(0);
+    const fetchedKeys   = useRef<Set<string>>(new Set());
+    const pollTimerRef  = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const pollCountRef  = useRef(0);
+    const MAX_POLL = 15;
 
-    // Trigger search after component mount once we parsed the params
-    useEffect(() => {
-        // Only fallback to LHR / CDG if org / dest were completely omitted.
-        // If provided but invalid (unmappable), leave as is to flag validation warnings.
-        const iataOrg = defaultOrg ? getIataCode(defaultOrg, defaultOrg) : "LHR";
-        const iataDest = defaultDest ? getIataCode(defaultDest, defaultDest) : "CDG";
-        let depDate = parseDepartureDate(defaultDates);
-
-        setSearchParams({
-            originLocationCode: iataOrg,
-            destinationLocationCode: iataDest,
-            departureDate: depDate,
-            adults: 1,
-            currencyCode: finalCurrency
-        });
-    }, [defaultOrg, defaultDest, defaultDates, finalCurrency]);
-
-    const { data, isLoading, isError, error } = useFlights(searchParams);
-
-    const [sortBy, setSortBy] = useState<SortOption>('BEST');
+    const [sortBy,   setSortBy]   = useState<SortOption>("BEST");
     const [maxStops, setMaxStops] = useState<number | null>(null);
 
-    const flights = data?.data || [];
-
-    const processedFlights = useMemo(() => {
-        let result = [...flights];
-
-        if (maxStops !== null) {
-            result = result.filter((flight: any) => {
-                const segments = flight.itineraries?.[0]?.segments || [];
-                const flightStops = segments.length > 0 ? segments.length - 1 : 0;
-                return flightStops <= maxStops;
-            });
+    // ── Fetch flight legs from Gemini endpoint ─────────────────────────────────
+    const fetchLegs = useCallback(async () => {
+        if (!tripId) return;
+        setLegsStatus("loading");
+        try {
+            const res = await fetch(API + "/trips/" + tripId + "/flight-legs");
+            if (!res.ok) throw new Error("endpoint error");
+            const data = await res.json();
+            if (data.status === "pending") { setLegsStatus("pending"); return; }
+            setLegsData(data.legs);
+            setLegsStatus("ready");
+            setActiveTab(0);
+            fetchedKeys.current.clear();
+        } catch {
+            setLegsStatus("error");
         }
+    }, [tripId, API]);
 
-        result.sort((a: any, b: any) => compareFlights(a, b, sortBy));
+    useEffect(() => { if (tripId) fetchLegs(); }, [tripId, fetchLegs]);
 
-        return result;
-    }, [flights, sortBy, maxStops]);
+    // ── Poll while plan is generating ─────────────────────────────────────────
+    useEffect(() => {
+        if (legsStatus !== "pending") {
+            if (pollTimerRef.current) clearTimeout(pollTimerRef.current);
+            pollCountRef.current = 0;
+            return;
+        }
+        if (pollCountRef.current >= MAX_POLL) { setLegsStatus("error"); return; }
+        pollTimerRef.current = setTimeout(async () => { pollCountRef.current++; await fetchLegs(); }, 3000);
+        return () => { if (pollTimerRef.current) clearTimeout(pollTimerRef.current); };
+    }, [legsStatus, fetchLegs]);
 
-    if (isLoading || !searchParams) {
-        return <SkeletonLoader type="flights" />;
-    }
+    // ── Fetch flights for a single leg ─────────────────────────────────────────
+    const fetchLegFlights = useCallback(async (key: string, leg: FlightLegItem) => {
+        if (fetchedKeys.current.has(key)) return;
+        fetchedKeys.current.add(key);
 
-    if (isError) {
+        setLegStates(prev => ({ ...prev, [key]: { isLoading: true, flights: [], error: null } }));
+
+        try {
+            const qp = new URLSearchParams({
+                originLocationCode:      leg.fromIata,
+                destinationLocationCode: leg.toIata,
+                departureDate:           leg.date || new Date().toISOString().split("T")[0],
+                adults:                  "1",
+                currencyCode:            finalCurrency,
+            });
+            if (tripId) qp.append("tripId", tripId);
+
+            const res = await fetch(API + "/flights/search?" + qp.toString());
+            if (!res.ok) throw new Error("Flight search failed");
+            const json = await res.json();
+
+            setLegStates(prev => ({
+                ...prev,
+                [key]: { isLoading: false, flights: json.data || [], error: null },
+            }));
+        } catch (err: any) {
+            setLegStates(prev => ({
+                ...prev,
+                [key]: { isLoading: false, flights: [], error: err.message || "Failed" },
+            }));
+        }
+    }, [tripId, finalCurrency, API]);
+
+    // ── Get all sequential legs as one array ───────────────────────────────────
+    const sequentialLegs = (() => {
+        if (!legsData) return [];
+        const outLegs = (legsData.outbound || []).map(l => ({ ...l, isReturnLeg: false }));
+        const retLegs = (legsData.return || []).map(l => ({ ...l, isReturnLeg: true }));
+        return [...outLegs, ...retLegs];
+    })();
+
+    // ── Trigger fetch for active leg tab ──────────────────────────────────────
+    useEffect(() => {
+        if (sequentialLegs.length === 0) return;
+        const activeLeg = sequentialLegs[activeTab];
+        if (activeLeg) {
+            const key = `${activeLeg.legNum}#${activeLeg.fromIata}#${activeLeg.toIata}#${activeLeg.date}`;
+            fetchLegFlights(key, activeLeg);
+        }
+    }, [activeTab, sequentialLegs, fetchLegFlights]);
+
+    // Pre-fetch first tab
+    useEffect(() => {
+        if (sequentialLegs.length > 0) {
+            const activeLeg = sequentialLegs[0];
+            const key = `${activeLeg.legNum}#${activeLeg.fromIata}#${activeLeg.toIata}#${activeLeg.date}`;
+            fetchLegFlights(key, activeLeg);
+        }
+    }, [sequentialLegs]); // eslint-disable-line
+
+    // ─── Render loading / pending / error ─────────────────────────────────────
+
+    if (legsStatus === "idle" || legsStatus === "loading") {
         return (
-            <div className="glass-panel p-8 rounded-2xl text-center border-dashed border-2 border-red-500/20 text-red-400">
-                <p>Failed to find flights for {defaultDest}. {error?.message}</p>
+            <div className="space-y-8">
+                <FlightFilters sortBy={sortBy} setSortBy={setSortBy} maxStops={maxStops} setMaxStops={setMaxStops} />
+                <div className="space-y-4">
+                    {[1].map(i => (
+                        <div key={i} className="space-y-2">
+                            <div className="h-10 w-28 rounded-full bg-white/5 animate-pulse" />
+                            <SkeletonLoader type="flights" />
+                        </div>
+                    ))}
+                </div>
             </div>
         );
     }
 
+    if (legsStatus === "pending") {
+        return (
+            <div className="space-y-8">
+                <FlightFilters sortBy={sortBy} setSortBy={setSortBy} maxStops={maxStops} setMaxStops={setMaxStops} />
+                <div className="glass-panel rounded-2xl p-10 flex flex-col items-center gap-4 border border-white/10">
+                    <div className="w-12 h-12 rounded-full bg-sky-500/15 flex items-center justify-center">
+                        <Loader2 className="w-6 h-6 text-sky-400 animate-spin" />
+                    </div>
+                    <div className="text-center">
+                        <p className="text-white font-semibold">AI Analysing Your Flight Plan…</p>
+                        <p className="text-white/50 text-sm mt-1">
+                            Finding optimal commercial flights. Stays and domestic connections will load soon.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
+    if (legsStatus === "error" || !legsData || sequentialLegs.length === 0) {
+        return (
+            <div className="space-y-8">
+                <FlightFilters sortBy={sortBy} setSortBy={setSortBy} maxStops={maxStops} setMaxStops={setMaxStops} />
+                <div className="glass-panel rounded-2xl p-8 flex flex-col items-center gap-4 border border-red-500/20">
+                    <p className="text-white/60 text-sm">No commercial flight routes required or found for this destination.</p>
+                    <button onClick={() => { fetchedKeys.current.clear(); fetchLegs(); }}
+                        className="flex items-center gap-2 px-4 py-2 rounded-lg bg-white/10 hover:bg-white/15 text-white/70 text-sm transition-all">
+                        <RefreshCw className="w-4 h-4" /> Retry
+                    </button>
+                </div>
+            </div>
+        );
+    }
+
+    const activeLeg = sequentialLegs[activeTab];
+    const key = activeLeg ? `${activeLeg.legNum}#${activeLeg.fromIata}#${activeLeg.toIata}#${activeLeg.date}` : "";
+    const activeState = legStates[key];
+
     return (
         <div className="space-y-6">
-            <FlightFilters
-                sortBy={sortBy}
-                setSortBy={setSortBy}
-                maxStops={maxStops}
-                setMaxStops={setMaxStops}
-            />
+            {/* Global Filters */}
+            <FlightFilters sortBy={sortBy} setSortBy={setSortBy} maxStops={maxStops} setMaxStops={setMaxStops} />
 
-            {processedFlights.length === 0 ? (
-                <div className="glass-panel p-8 rounded-2xl text-center border-dashed border-2 border-white/20">
-                    <p className="text-white/70">No viable flights found for {defaultDest} yet.</p>
-                </div>
-            ) : (
+            {/* Tab Bar for Flight Legs */}
+            <div className="flex flex-wrap gap-2 pb-3 border-b border-white/10">
+                {sequentialLegs.map((leg, idx) => {
+                    const isActive = idx === activeTab;
+                    const isReturnLeg = leg.isReturnLeg;
+
+                    return (
+                        <button
+                            key={idx}
+                            onClick={() => setActiveTab(idx)}
+                            className={[
+                                "flex items-center gap-2 px-4 py-2 rounded-full text-xs font-semibold transition-all duration-250 border whitespace-nowrap",
+                                isActive
+                                    ? isReturnLeg
+                                        ? "bg-purple-500/20 border-purple-500/50 text-purple-300 shadow-lg shadow-purple-500/10"
+                                        : "bg-sky-500/20 border-sky-500/50 text-sky-300 shadow-lg shadow-sky-500/10"
+                                    : "bg-white/5 border-white/10 text-white/60 hover:bg-white/10 hover:text-white/80",
+                            ].join(" ")}
+                        >
+                            <Plane className={`w-3.5 h-3.5 ${isActive ? isReturnLeg ? "text-purple-400 -rotate-45" : "text-sky-400 rotate-45" : "text-white/40"}`} />
+                            <span>{leg.from} → {leg.to}</span>
+                            <span className="text-[10px] opacity-60">({fmtDisplay(leg.date)})</span>
+                        </button>
+                    );
+                })}
+            </div>
+
+            {/* Active Flight Leg Content */}
+            {activeLeg && (
                 <div className="space-y-4">
-                    <AnimatePresence>
-                        {processedFlights.map((flight: any, index: number) => (
-                            <motion.div
-                                key={flight.id}
-                                initial={{ opacity: 0, y: 15 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                transition={{ delay: index * 0.05 }}
-                            >
-                                <FlightCard flight={flight} />
-                            </motion.div>
-                        ))}
-                    </AnimatePresence>
+                    {/* Active Header */}
+                    <div className="flex items-center gap-3">
+                        <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 border ${
+                            activeLeg.isReturnLeg ? "bg-purple-500/10 border-purple-500/20" : "bg-sky-500/10 border-sky-500/20"
+                        }`}>
+                            <Plane className={`w-3.5 h-3.5 ${activeLeg.isReturnLeg ? "text-purple-400 -rotate-45" : "text-sky-400 rotate-45"}`} />
+                        </div>
+                        <div>
+                            <h3 className="text-sm font-semibold text-white leading-tight">
+                                {activeLeg.from} ({activeLeg.fromIata}) to {activeLeg.to} ({activeLeg.toIata})
+                            </h3>
+                            <div className="flex items-center gap-1.5 text-xs text-white/40 mt-0.5">
+                                <CalendarDays className="w-3.5 h-3.5" />
+                                <span>{fmtDisplay(activeLeg.date)} {activeLeg.note ? `· ${activeLeg.note}` : ""}</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Flight Result Options */}
+                    {!activeState || activeState.isLoading ? (
+                        <SkeletonLoader type="flights" />
+                    ) : activeState.error ? (
+                        <div className="glass-panel p-6 rounded-xl border border-red-500/10 text-center">
+                            <p className="text-red-400 text-sm mb-3">Could not search flights: {activeState.error}</p>
+                            <DirectBookingLinks orgCode={activeLeg.fromIata} destCode={activeLeg.toIata} travelDate={activeLeg.date} />
+                        </div>
+                    ) : (() => {
+                        let sorted = [...activeState.flights];
+                        if (maxStops !== null) {
+                            sorted = sorted.filter(f => {
+                                const segs = f.itineraries?.[0]?.segments || [];
+                                return (segs.length > 0 ? segs.length - 1 : 0) <= maxStops;
+                            });
+                        }
+                        sorted.sort((a, b) => compareFlights(a, b, sortBy));
+
+                        if (sorted.length === 0) {
+                            return (
+                                <div className="glass-panel p-5 rounded-xl border border-white/5 text-center">
+                                    <Search className="w-7 h-7 text-white/20 mx-auto mb-2" />
+                                    <p className="text-white/60 text-sm mb-1">
+                                        No direct flights found for <strong className="text-white/80">{activeLeg.fromIata} → {activeLeg.toIata}</strong>
+                                    </p>
+                                    <p className="text-white/30 text-xs mb-2">Compare on booking platforms directly:</p>
+                                    <DirectBookingLinks orgCode={activeLeg.fromIata} destCode={activeLeg.toIata} travelDate={activeLeg.date} />
+                                </div>
+                            );
+                        }
+
+                        return (
+                            <div className="space-y-3">
+                                <AnimatePresence mode="popLayout">
+                                    {sorted.slice(0, 5).map((flight, fIdx) => (
+                                        <motion.div key={flight.id || fIdx}
+                                            initial={{ opacity: 0, y: 8 }}
+                                            animate={{ opacity: 1, y: 0 }}
+                                            exit={{ opacity: 0 }}
+                                            transition={{ duration: 0.15 }}>
+                                            <FlightCard flight={flight} />
+                                        </motion.div>
+                                    ))}
+                                </AnimatePresence>
+                                <div className="flex items-center justify-center gap-2 pt-1 border-t border-white/5">
+                                    <span className="text-[10px] text-white/30 font-medium">Compare prices:</span>
+                                    <DirectBookingLinks orgCode={activeLeg.fromIata} destCode={activeLeg.toIata} travelDate={activeLeg.date} />
+                                </div>
+                            </div>
+                        );
+                    })()}
                 </div>
             )}
         </div>

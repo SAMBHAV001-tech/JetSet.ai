@@ -28,11 +28,11 @@ export default async function ResultsPage({
                 {/* Header Area */}
                 <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 glass-panel p-6 md:p-8 rounded-2xl">
                     <div>
-                        <h1 className="text-3xl md:text-5xl font-display font-bold text-white tracking-tight">
+                        <h1 className="text-3xl md:text-5xl font-display font-bold text-white tracking-tight select-none pointer-events-none">
                             Your <span className="text-sky-vivid">Trip Blueprint</span>
                         </h1>
                         <p className="text-white/70 mt-2 font-sans flex items-center gap-2">
-                            <span className="inline-block w-2 h-2 rounded-full bg-emerald-400 animate-pulse shadow-[0_0_8px_rgba(52,211,153,0.8)]" />
+                            <span className="inline-block w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.5)]" />
                             AI is finalizing the smartest routes and best deals.
                         </p>
                     </div>

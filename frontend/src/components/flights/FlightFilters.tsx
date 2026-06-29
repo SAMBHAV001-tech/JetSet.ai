@@ -2,7 +2,7 @@
 
 import React from 'react';
 
-export type SortOption = 'CHEAPEST' | 'FASTEST' | 'BEST';
+export type SortOption = 'BEST' | 'CHEAPEST' | 'FASTEST' | 'DIRECT';
 
 export interface FlightFiltersProps {
     sortBy: SortOption;
@@ -16,7 +16,7 @@ export function FlightFilters({ sortBy, setSortBy, maxStops, setMaxStops, loadin
     return (
         <div className="flex flex-col md:flex-row items-center justify-between w-full bg-white/5 dark:bg-black/20 backdrop-blur-xl border border-white/10 rounded-2xl p-4 gap-4 mb-6">
             <div className="flex items-center gap-2 overflow-x-auto w-full md:w-auto pb-2 md:pb-0 scrollbar-hide">
-                {(['BEST', 'CHEAPEST', 'FASTEST'] as SortOption[]).map((option) => (
+                {(['BEST', 'CHEAPEST', 'FASTEST', 'DIRECT'] as SortOption[]).map((option) => (
                     <button
                         key={option}
                         disabled={loading}

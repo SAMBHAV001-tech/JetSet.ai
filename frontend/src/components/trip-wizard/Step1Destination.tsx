@@ -62,7 +62,7 @@ function useLocationSearch(query: string, fieldName: "origin" | "destination", f
             } finally {
                 setIsLoading(false);
             }
-        }, 500);
+        }, 150);
 
         return () => clearTimeout(delayDebounceFn);
     }, [query]);
@@ -143,7 +143,7 @@ export default function Step1Destination({ form }: Step1Props) {
                                     <PlaneTakeoff className="absolute left-4 top-1/2 -translate-y-1/2 text-sky-vivid h-5 w-5 transition-transform group-focus-within:scale-110" />
 
                                     <Input
-                                        placeholder="Leaving from... (e.g. London, UK)"
+                                        placeholder="Leaving from..."
                                         {...field}
                                         onChange={(e) => {
                                             originSearch.selectedRef.current = null;
@@ -168,14 +168,14 @@ export default function Step1Destination({ form }: Step1Props) {
                             </FormControl>
 
                             {originSearch.showDropdown && originSearch.suggestions.length > 0 && (
-                                <div className="absolute w-full top-full mt-2 z-50 glass-panel rounded-xl overflow-hidden shadow-[0_10px_40px_rgba(0,0,0,0.5)] border border-white/20 animate-in fade-in slide-in-from-top-2">
+                                <div className="absolute w-full top-full mt-2 autocomplete-dropdown rounded-xl overflow-hidden animate-in fade-in slide-in-from-top-2" style={{zIndex: 9999}}>
                                     <ul id="origin-listbox" role="listbox" className="max-h-60 overflow-y-auto custom-scrollbar">
                                         {originSearch.suggestions.map((s, idx) => (
                                             <li key={s.id} id={`suggestion-origin-${idx}`} role="option" aria-selected={originSearch.activeIndex === idx}>
                                                 <button
                                                     type="button"
                                                     onClick={() => originSearch.handleSelect(s)}
-                                                    className={`w-full text-left px-4 py-3 flex items-center gap-3 transition-colors border-b border-white/5 last:border-0 ${originSearch.activeIndex === idx ? "bg-white/20" : "hover:bg-white/10"}`}
+                                                    className={`w-full text-left px-4 py-3 flex items-center gap-3 transition-colors border-b border-white/5 last:border-0 ${originSearch.activeIndex === idx ? "bg-sky-600/30" : "hover:bg-white/10"}`}
                                                 >
                                                     <MapPin className="text-sky-400 h-4 w-4 shrink-0" />
                                                     <span className="text-white truncate">{s.name}</span>
@@ -202,7 +202,7 @@ export default function Step1Destination({ form }: Step1Props) {
                                     <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-sky-vivid h-5 w-5 transition-transform group-focus-within:scale-110" />
 
                                     <Input
-                                        placeholder="Going to... (e.g. Kyoto, Japan)"
+                                        placeholder="Going to..."
                                         {...field}
                                         onChange={(e) => {
                                             destSearch.selectedRef.current = null;
@@ -227,14 +227,14 @@ export default function Step1Destination({ form }: Step1Props) {
                             </FormControl>
 
                             {destSearch.showDropdown && destSearch.suggestions.length > 0 && (
-                                <div className="absolute w-full top-full mt-2 z-50 glass-panel rounded-xl overflow-hidden shadow-[0_10px_40px_rgba(0,0,0,0.5)] border border-white/20 animate-in fade-in slide-in-from-top-2">
+                                <div className="absolute w-full top-full mt-2 autocomplete-dropdown rounded-xl overflow-hidden animate-in fade-in slide-in-from-top-2" style={{zIndex: 9999}}>
                                     <ul id="destination-listbox" role="listbox" className="max-h-60 overflow-y-auto custom-scrollbar">
                                         {destSearch.suggestions.map((s, idx) => (
                                             <li key={s.id} id={`suggestion-dest-${idx}`} role="option" aria-selected={destSearch.activeIndex === idx}>
                                                 <button
                                                     type="button"
                                                     onClick={() => destSearch.handleSelect(s)}
-                                                    className={`w-full text-left px-4 py-3 flex items-center gap-3 transition-colors border-b border-white/5 last:border-0 ${destSearch.activeIndex === idx ? "bg-white/20" : "hover:bg-white/10"}`}
+                                                    className={`w-full text-left px-4 py-3 flex items-center gap-3 transition-colors border-b border-white/5 last:border-0 ${destSearch.activeIndex === idx ? "bg-sky-600/30" : "hover:bg-white/10"}`}
                                                 >
                                                     <MapPin className="text-sky-400 h-4 w-4 shrink-0" />
                                                     <span className="text-white truncate">{s.name}</span>

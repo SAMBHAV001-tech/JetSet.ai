@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -12,6 +12,7 @@ import { Form } from "@/components/ui/form";
 import Step1Destination from "./Step1Destination";
 import Step2Dates from "./Step2Dates";
 import Step3Preferences from "./Step3Preferences";
+import { Loader2 } from "lucide-react";
 
 // Define the form schema
 export const tripFormSchema = z.object({
@@ -29,7 +30,7 @@ export const tripFormSchema = z.object({
     }),
     budget: z.string().min(1, "Please select a budget level"),
     companions: z.string().min(1, "Please select who you are traveling with"),
-    interests: z.array(z.string()).min(1, "Select at least one interest"),
+    interests: z.array(z.string()),
     currency: z.string().optional(),
 });
 
@@ -39,7 +40,23 @@ const generatePlaceholderId = () => `trip-${Date.now()}-${Math.random().toString
 
 export default function TripWizard() {
     const [step, setStep] = useState(1);
+    const [isSubmitting, setIsSubmitting] = useState(false);
     const totalSteps = 3;
+    const cardRef = useRef<HTMLDivElement>(null);
+
+    const scrollToWizardTop = () => {
+        if (typeof window !== "undefined" && cardRef.current) {
+            const yOffset = -100; // Offset to clear the fixed header + add breathing space
+            const element = cardRef.current;
+            const y = element.getBoundingClientRect().top + window.scrollY + yOffset;
+            window.scrollTo({ top: y, behavior: "smooth" });
+        }
+    };
+
+    // Scroll wizard card to top with header offset on every step change
+    useEffect(() => {
+        scrollToWizardTop();
+    }, [step]);
 
     const form = useForm<TripFormValues>({
         resolver: zodResolver(tripFormSchema),
@@ -60,45 +77,129 @@ export default function TripWizard() {
 
     const router = useRouter();
     const onSubmit = async (data: TripFormValues) => {
-        // TODO: [TASK-1] Implement real API integration for Trip Planning Submission
-        // 1. Endpoint: POST `/api/trip-plan` or equivalent NestJS/NextRoute.
-        // 2. Payload Shape: Sanitize `data` (e.g., convert dataRange dates to ISO strings).
-        // 3. Form State: Set a loading state variable to disable the submit button and show a spinner.
-        // 4. On Success: Navigate user to the Results Dashboard (`/results/:id`) populated with initial skeleton loaders.
-        // 5. On Failure: Catch error, toggle loading off, and show a destructive toast notification to the user.
-        console.log("Form Submitted:", data);
+        setIsSubmitting(true);
+        try {
+            const fromDateStr = data.dateRange.from ? data.dateRange.from.toISOString().split("T")[0] : "";
+            const toDateStr = data.dateRange.to ? data.dateRange.to.toISOString().split("T")[0] : "";
 
-        const placeholderId = generatePlaceholderId();
+            const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+            const response = await fetch(`${baseUrl}/trips`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                    origin: data.origin,
+                    destination: data.destination,
+                    fromDate: fromDateStr,
+                    toDate: toDateStr,
+                    budget: data.budget,
+                    companions: data.companions,
+                    interests: data.interests,
+                    currency: data.currency || "USD",
+                }),
+            });
 
-        const orgParam = encodeURIComponent(data.origin);
-        const destParam = encodeURIComponent(data.destination);
+            if (!response.ok) {
+                throw new Error("Failed to save trip plan to database");
+            }
 
-        const displayDates = data.dateRange?.from
-            ? `${data.dateRange.from.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - ${data.dateRange.to ? data.dateRange.to.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : ''}`
-            : '';
+            const savedTrip = await response.json();
 
-        const exactDates = data.dateRange?.from
-            ? `${data.dateRange.from.toISOString().split("T")[0]}${data.dateRange.to ? '_' + data.dateRange.to.toISOString().split("T")[0] : ''}`
-            : '';
+            const orgParam = encodeURIComponent(data.origin);
+            const destParam = encodeURIComponent(data.destination);
 
-        const displayDatesParam = encodeURIComponent(displayDates);
-        const datesParam = encodeURIComponent(exactDates);
-        const currParam = data.currency ? `&curr=${data.currency}` : '';
+            const displayDates = data.dateRange?.from
+                ? `${data.dateRange.from.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - ${data.dateRange.to ? data.dateRange.to.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : ''}`
+                : '';
 
-        router.push(`/results/${placeholderId}?org=${orgParam}&dest=${destParam}&dates=${datesParam}&displayDates=${displayDatesParam}${currParam}`);
+            const exactDates = data.dateRange?.from
+                ? `${fromDateStr}${toDateStr ? '_' + toDateStr : ''}`
+                : '';
+
+            const displayDatesParam = encodeURIComponent(displayDates);
+            const datesParam = encodeURIComponent(exactDates);
+            const currParam = (data.currency || "USD") ? `&curr=${data.currency || "USD"}` : '';
+
+            router.push(`/results/${savedTrip.id}?org=${orgParam}&dest=${destParam}&dates=${datesParam}&displayDates=${displayDatesParam}${currParam}`);
+        } catch (error) {
+            console.error("Submission error:", error);
+            alert("Error creating trip blueprint. Please try again.");
+            setIsSubmitting(false);
+        }
     };
+
+    const [isValidating, setIsValidating] = useState(false);
 
     const nextStep = async () => {
         // Validate current step before moving
         let fieldsToValidate: (keyof TripFormValues)[] = [];
         if (step === 1) fieldsToValidate = ["origin", "destination"];
         else if (step === 2) fieldsToValidate = ["dateRange", "budget"];
-        else if (step === 3) fieldsToValidate = ["companions", "interests"];
+        else if (step === 3) fieldsToValidate = ["companions"];
 
         const isStepValid = await form.trigger(fieldsToValidate);
-        if (isStepValid) {
-            setStep((prev) => Math.min(prev + 1, totalSteps));
+        if (!isStepValid) {
+            scrollToWizardTop();
+            return;
         }
+
+        if (step === 1) {
+            setIsValidating(true);
+            const origin = form.getValues("origin");
+            const destination = form.getValues("destination");
+            const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+
+            try {
+                // Validate origin
+                const resOrg = await fetch(`${baseUrl}/destinations/search?q=${encodeURIComponent(origin)}`);
+                const dataOrg = resOrg.ok ? await resOrg.json() : [];
+                if (!Array.isArray(dataOrg) || dataOrg.length === 0) {
+                    // Fallback to check if it's a valid place on Earth
+                    const validateRes = await fetch(`${baseUrl}/destinations/validate`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ location: origin }),
+                    });
+                    const valData = validateRes.ok ? await validateRes.json() : { isValid: true };
+                    if (!valData.isValid) {
+                        form.setError("origin", { type: "manual", message: "Origin is not a recognized city/location on Earth. Please select a valid location." });
+                        setIsValidating(false);
+                        return;
+                    }
+                    if (valData.resolvedName) {
+                        form.setValue("origin", valData.resolvedName, { shouldValidate: true });
+                    }
+                }
+
+                // Validate destination
+                const resDest = await fetch(`${baseUrl}/destinations/search?q=${encodeURIComponent(destination)}`);
+                const dataDest = resDest.ok ? await resDest.json() : [];
+                if (!Array.isArray(dataDest) || dataDest.length === 0) {
+                    // Fallback to check if it's a valid place on Earth
+                    const validateRes = await fetch(`${baseUrl}/destinations/validate`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ location: destination }),
+                    });
+                    const valData = validateRes.ok ? await validateRes.json() : { isValid: true };
+                    if (!valData.isValid) {
+                        form.setError("destination", { type: "manual", message: "Destination is not a recognized city/location on Earth. Please select a valid location." });
+                        setIsValidating(false);
+                        return;
+                    }
+                    if (valData.resolvedName) {
+                        form.setValue("destination", valData.resolvedName, { shouldValidate: true });
+                    }
+                }
+            } catch (err) {
+                console.error("Geocoding validation error:", err);
+            } finally {
+                setIsValidating(false);
+            }
+        }
+
+        setStep((prev) => Math.min(prev + 1, totalSteps));
     };
 
     const prevStep = () => {
@@ -106,9 +207,9 @@ export default function TripWizard() {
     };
 
     return (
-        <div className="w-full max-w-2xl mx-auto glass-panel rounded-2xl p-6 md:p-10 relative overflow-hidden">
-            {/* Progress Bar */}
-            <div className="absolute top-0 left-0 h-1 bg-white/10 w-full">
+        <div ref={cardRef} className="w-full max-w-2xl mx-auto glass-panel rounded-2xl p-6 md:p-10 relative">
+            {/* Progress Bar — own overflow-hidden so it stays inside rounded corners */}
+            <div className="absolute top-0 left-0 w-full h-1 rounded-t-2xl overflow-hidden bg-white/10">
                 <div
                     className="h-full bg-sky-glow transition-all duration-500 ease-in-out"
                     style={{ width: `${(step / totalSteps) * 100}%` }}
@@ -124,7 +225,7 @@ export default function TripWizard() {
 
             <Form {...form}>
                 <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-                    <div className="relative min-h-[300px]">
+                    <div className="relative min-h-[360px] overflow-visible">
                         <AnimatePresence mode="wait">
                             {step === 1 && (
                                 <motion.div
@@ -167,6 +268,7 @@ export default function TripWizard() {
                             type="button"
                             variant="ghost"
                             onClick={prevStep}
+                            disabled={isSubmitting || isValidating}
                             className={`text-white/70 hover:text-white hover:bg-white/10 ${step === 1 ? "invisible" : ""
                                 }`}
                         >
@@ -177,16 +279,19 @@ export default function TripWizard() {
                             <Button
                                 type="button"
                                 onClick={nextStep}
-                                className="bg-sky-pure hover:bg-sky-deep text-white shadow-[0_0_15px_rgba(96,165,250,0.5)] transition-all"
+                                disabled={isSubmitting || isValidating}
+                                className="bg-sky-pure hover:bg-sky-deep text-white shadow-[0_0_15px_rgba(96,165,250,0.5)] transition-all flex items-center gap-2"
                             >
-                                Continue
+                                {isValidating && <Loader2 className="w-4 h-4 animate-spin" />}
+                                {isValidating ? "Verifying..." : "Continue"}
                             </Button>
                         ) : (
                             <Button
                                 type="submit"
-                                className="bg-emerald-500 hover:bg-emerald-600 text-white shadow-[0_0_15px_rgba(16,185,129,0.5)] transition-all"
+                                disabled={isSubmitting}
+                                className="bg-emerald-500 hover:bg-emerald-600 text-white shadow-[0_0_15px_rgba(16,185,129,0.5)] transition-all flex items-center gap-2"
                             >
-                                Find My Trip
+                                {isSubmitting ? "Generating Blueprint..." : "Find My Trip"}
                             </Button>
                         )}
                     </div>

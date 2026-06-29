@@ -16,12 +16,36 @@ export const getFlightScore = (flight: any): { price: number; duration: number; 
     return { price, duration, score };
 };
 
-export const compareFlights = (a: any, b: any, sortBy: 'CHEAPEST' | 'FASTEST' | 'BEST'): number => {
-    const scoreA = getFlightScore(a);
-    const scoreB = getFlightScore(b);
+export const compareFlights = (a: any, b: any, sortBy: 'CHEAPEST' | 'FASTEST' | 'BEST' | 'DIRECT'): number => {
+    if (sortBy === 'CHEAPEST') {
+        const priceA = parseFloat(a.price?.total || '0');
+        const priceB = parseFloat(b.price?.total || '0');
+        return priceA - priceB;
+    }
+    if (sortBy === 'FASTEST') {
+        const durA = parseIsoDuration(a.itineraries?.[0]?.duration || '');
+        const durB = parseIsoDuration(b.itineraries?.[0]?.duration || '');
+        return durA - durB;
+    }
+    if (sortBy === 'DIRECT') {
+        const stopsA = (a.itineraries?.[0]?.segments?.length || 1) - 1;
+        const stopsB = (b.itineraries?.[0]?.segments?.length || 1) - 1;
+        if (stopsA !== stopsB) {
+            return stopsA - stopsB;
+        }
+        const priceA = parseFloat(a.price?.total || '0');
+        const priceB = parseFloat(b.price?.total || '0');
+        return priceA - priceB;
+    }
 
-    if (sortBy === 'CHEAPEST') return scoreA.price - scoreB.price;
-    if (sortBy === 'FASTEST') return scoreA.duration - scoreB.duration;
-    // BEST: simplified score combining price and duration
-    return scoreA.score - scoreB.score;
+    // BEST: AI matchScore descending (highest match first). Fallback to standard heuristic score.
+    const scoreA = a.matchScore ?? 80;
+    const scoreB = b.matchScore ?? 80;
+    if (scoreA !== scoreB) {
+        return scoreB - scoreA;
+    }
+
+    const algScoreA = getFlightScore(a).score;
+    const algScoreB = getFlightScore(b).score;
+    return algScoreA - algScoreB;
 };

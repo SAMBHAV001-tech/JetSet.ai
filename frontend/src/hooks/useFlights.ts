@@ -7,6 +7,7 @@ export interface FlightSearchParams {
     returnDate?: string;
     adults: number;
     currencyCode?: string;
+    tripId?: string;
 }
 
 export const useFlights = (params: FlightSearchParams | null) => {

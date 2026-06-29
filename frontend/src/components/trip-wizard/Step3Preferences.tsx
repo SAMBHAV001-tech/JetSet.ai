@@ -138,7 +138,9 @@ export default function Step3Preferences({ form }: Step3Props) {
                                     );
                                 })}
                             </div>
-                            <FormMessage className="text-pink-400" />
+                            <p className="text-white/35 text-xs font-mono mt-1">
+                                Optional — skip to let AI pick the most popular experiences for you.
+                            </p>
                         </FormItem>
                     );
                 }}

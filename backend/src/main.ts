@@ -2,12 +2,10 @@ import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 
 async function bootstrap() {
+  console.log("Starting backend server...");
   const app = await NestFactory.create(AppModule);
 
-  const allowedOrigin = process.env.ALLOWED_ORIGIN || 'http://localhost:3000';
-  app.enableCors({
-    origin: allowedOrigin,
-  });
+  app.enableCors(); // Allow all origins for local development
 
   await app.listen(process.env.PORT ?? 3001);
 }

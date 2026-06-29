@@ -2,6 +2,7 @@
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useState } from "react";
+import { BackendHealthProvider } from "@/components/layout/BackendHealthProvider";
 
 export default function Providers({ children }: { children: React.ReactNode }) {
     // Initialize the QueryClient once per session
@@ -16,7 +17,9 @@ export default function Providers({ children }: { children: React.ReactNode }) {
 
     return (
         <QueryClientProvider client={queryClient}>
-            {children}
+            <BackendHealthProvider>
+                {children}
+            </BackendHealthProvider>
         </QueryClientProvider>
     );
 }

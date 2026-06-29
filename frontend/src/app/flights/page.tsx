@@ -174,7 +174,7 @@ export default function FlightsPage() {
                             <div className="w-16 h-16 border-4 border-sky-500/20 border-t-sky-500 rounded-full animate-spin"></div>
                             <Plane className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-sky-400 animate-pulse w-6 h-6" />
                         </div>
-                        <p className="text-sky-200/50 uppercase tracking-widest text-sm font-bold animate-pulse">Searching the skies...</p>
+                        <p className="text-sky-200/50 uppercase tracking-widest text-sm font-bold">Searching the skies...</p>
                     </div>
                 )}
 
