@@ -13,13 +13,13 @@
 </p>
 
 <p align="center">
-  <a href="https://jetset-ai.vercel.app">
+  <a href="https://jet-set-ai.vercel.app">
     <img src="https://img.shields.io/badge/LIVE_DEMO-VERCEL-black?style=for-the-badge&logo=vercel" alt="Live Demo Vercel">
   </a>
-  <a href="https://huggingface.co/spaces/SAMBHAV001-tech/JetSet.ai">
+  <a href="https://samd445-jetset-ai.hf.space">
     <img src="https://img.shields.io/badge/BACKEND-LIVE-green?style=for-the-badge&logo=docker" alt="Backend Docker">
   </a>
-  <a href="https://github.com/SAMBHAV001-tech/JetSet.ai">
+  <a href="https://github.com/SAMBHAV001-tech/JetSet.AI">
     <img src="https://img.shields.io/badge/LICENSE-MIT-blue?style=for-the-badge" alt="License MIT">
   </a>
 </p>
@@ -30,9 +30,9 @@
 
 | Service | URL |
 | :--- | :--- |
-| 🖥️ **Live Dashboard** | [jetset-ai.vercel.app](https://jetset-ai.vercel.app) |
-| ⚙️ **Backend API** | [sambhav001-tech-jetset-ai.hf.space](https://sambhav001-tech-jetset-ai.hf.space) |
-| 💖 **Health Check** | [sambhav001-tech-jetset-ai.hf.space/health](https://sambhav001-tech-jetset-ai.hf.space/health) |
+| 🖥️ **Live Dashboard** | [jet-set-ai.vercel.app](https://jet-set-ai.vercel.app) |
+| ⚙️ **Backend API** | [samd445-jetset-ai.hf.space](https://samd445-jetset-ai.hf.space) |
+| 💖 **Health Check** | [samd445-jetset-ai.hf.space/health](https://samd445-jetset-ai.hf.space/health) |
 
 > Cloud deployment includes UptimeRobot monitoring to prevent Hugging Face Space containers from sleeping during evaluations.
 
@@ -118,5 +118,6 @@ NEXT_PUBLIC_API_URL=http://localhost:3001
 ```
 
 ### 3. Production Deployment (Hugging Face + Vercel)
-* **Backend:** Build and deploy using the root-level production `Dockerfile` on node alpine.
-* **Uptime Keep-Alive:** To keep the free Hugging Face container awake, set up a free Uptime monitor (e.g. UptimeRobot) pointing to `https://<your-subdomain>.hf.space/health` checking every **30 minutes**.
+* **Backend:** Build and deploy using the root-level production `Dockerfile` on node alpine to [Hugging Face Spaces](https://huggingface.co/spaces/SamD445/JetSet_AI).
+* **Frontend:** Connect the GitHub repository to [Vercel](https://vercel.com) for automatic CI/CD deployments on every push to `main`.
+* **Uptime Keep-Alive:** To keep the free Hugging Face container awake, set up a free Uptime monitor (e.g. UptimeRobot) pointing to `https://samd445-jetset-ai.hf.space/health` checking every **30 minutes**.
