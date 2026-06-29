@@ -51,7 +51,9 @@ export function Header() {
             </header>
 
             {/* Mount the Global Emergency Panel Drawer */}
-            <EmergencyPanel isOpen={isEmergencyOpen} onClose={() => setIsEmergencyOpen(false)} />
+            <React.Suspense fallback={null}>
+                <EmergencyPanel isOpen={isEmergencyOpen} onClose={() => setIsEmergencyOpen(false)} />
+            </React.Suspense>
         </>
     );
 }
