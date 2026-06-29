@@ -3,6 +3,8 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { Wifi, WifiOff, Loader2 } from 'lucide-react';
 
+import { getApiUrl } from '@/utils/api';
+
 type HealthStatus = 'checking' | 'online' | 'waking' | 'offline';
 
 interface BackendHealthContextType {
@@ -22,7 +24,7 @@ export function BackendHealthProvider({ children }: { children: React.ReactNode 
     const [wakeUpProgress, setWakeUpProgress] = useState(0);
 
     useEffect(() => {
-        const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+        const baseUrl = getApiUrl();
         let isMounted = true;
         let pollInterval: NodeJS.Timeout | null = null;
         let progressInterval: NodeJS.Timeout | null = null;

@@ -1,3 +1,4 @@
+import { getApiUrl } from '@/utils/api';
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Plane, AlertTriangle, X, MapPin, Loader2, Navigation } from 'lucide-react';
@@ -77,7 +78,7 @@ export function EmergencyPanel({ isOpen, onClose }: EmergencyPanelProps) {
         const delayDebounceFn = setTimeout(async () => {
             setOrigLoading(true);
             try {
-                const baseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
+                const baseUrl = getApiUrl();
                 const response = await fetch(`${baseUrl}/destinations/search?q=${encodeURIComponent(cityInput)}`);
                 if (response.ok) {
                     const data = await response.json();
@@ -112,7 +113,7 @@ export function EmergencyPanel({ isOpen, onClose }: EmergencyPanelProps) {
         const delayDebounceFn = setTimeout(async () => {
             setDestLoading(true);
             try {
-                const baseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
+                const baseUrl = getApiUrl();
                 const response = await fetch(`${baseUrl}/destinations/search?q=${encodeURIComponent(destInput)}`);
                 if (response.ok) {
                     const data = await response.json();
@@ -145,7 +146,7 @@ export function EmergencyPanel({ isOpen, onClose }: EmergencyPanelProps) {
         let iata = getIataCode(result.name, "", false);
         if (!iata) {
             try {
-                const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+                const baseUrl = getApiUrl();
                 const res = await fetch(`${baseUrl}/destinations/resolve-airport?location=${encodeURIComponent(result.name)}`);
                 if (res.ok) {
                     const data = await res.json();
@@ -241,7 +242,7 @@ export function EmergencyPanel({ isOpen, onClose }: EmergencyPanelProps) {
                         resolvedCode = getIataCode(city, "", false);
                         if (!resolvedCode) {
                             try {
-                                const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+                                const baseUrl = getApiUrl();
                                 const codeRes = await fetch(`${baseUrl}/destinations/resolve-airport?location=${encodeURIComponent(city)}`);
                                 if (codeRes.ok) {
                                     const codeData = await codeRes.json();
@@ -321,7 +322,7 @@ export function EmergencyPanel({ isOpen, onClose }: EmergencyPanelProps) {
 
         setLocationStatus('loading');
 
-        const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+        const baseUrl = getApiUrl();
 
         let dIata: string | null = null;
         if (destInput) {

@@ -1,3 +1,4 @@
+import { getApiUrl } from '@/utils/api';
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
@@ -65,7 +66,7 @@ export default function ItineraryModule({ tripId, org, dest, dates }: ModuleProp
         setItinerary("");
 
         try {
-            const baseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
+            const baseUrl = getApiUrl();
 
             const tripDest = dest || "the destination";
             const tripOrg = org || "your origin";

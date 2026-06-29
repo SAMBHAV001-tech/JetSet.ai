@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { getHubForCurrency } from '@/utils/airport-mappings';
+import { getApiUrl } from '@/utils/api';
 
 export interface EmergencyFlightParams {
     originLocationCode: string;
@@ -42,10 +43,7 @@ export const useEmergencyFlights = (params: EmergencyFlightParams | null) => {
                 queryParams.append("currencyCode", params.currencyCode);
             }
 
-            const baseUrl = typeof process !== 'undefined' ? process.env.NEXT_PUBLIC_API_URL : undefined;
-            if (!baseUrl) {
-                throw new Error("NEXT_PUBLIC_API_URL is missing. Cannot fetch flights.");
-            }
+            const baseUrl = getApiUrl();
 
             const response = await fetch(`${baseUrl}/flights/search?${queryParams.toString()}`);
             if (!response.ok) {

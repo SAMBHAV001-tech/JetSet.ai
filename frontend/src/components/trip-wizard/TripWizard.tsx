@@ -13,6 +13,7 @@ import Step1Destination from "./Step1Destination";
 import Step2Dates from "./Step2Dates";
 import Step3Preferences from "./Step3Preferences";
 import { Loader2 } from "lucide-react";
+import { getApiUrl } from "@/utils/api";
 
 // Define the form schema
 export const tripFormSchema = z.object({
@@ -82,7 +83,7 @@ export default function TripWizard() {
             const fromDateStr = data.dateRange.from ? data.dateRange.from.toISOString().split("T")[0] : "";
             const toDateStr = data.dateRange.to ? data.dateRange.to.toISOString().split("T")[0] : "";
 
-            const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+            const baseUrl = getApiUrl();
             const response = await fetch(`${baseUrl}/trips`, {
                 method: "POST",
                 headers: {
@@ -148,7 +149,7 @@ export default function TripWizard() {
             setIsValidating(true);
             const origin = form.getValues("origin");
             const destination = form.getValues("destination");
-            const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+            const baseUrl = getApiUrl();
 
             try {
                 // Validate origin

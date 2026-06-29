@@ -11,6 +11,7 @@ import HotelsModule from "./modules/HotelsModule";
 import SeasonModule from "./modules/SeasonModule";
 import ItineraryModule from "./modules/ItineraryModule";
 import SummaryModule from "./modules/SummaryModule";
+import { getApiUrl } from "@/utils/api";
 
 interface ResultsDashboardProps {
     tripId: string;
@@ -39,7 +40,7 @@ export default function ResultsDashboard({ tripId, org, dest, dates, curr }: Res
 
     useEffect(() => {
         const handleScroll = () => {
-            if (window.scrollY > 150) {
+            if (window.scrollY > 300) {
                 setShowScrollBtn(true);
             } else {
                 setShowScrollBtn(false);
@@ -49,7 +50,7 @@ export default function ResultsDashboard({ tripId, org, dest, dates, curr }: Res
 
         // Fetch safety/restricted-access warning from the backend
         if (tripId) {
-            const baseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
+            const baseUrl = getApiUrl();
             fetch(`${baseUrl}/trips/${tripId}/warning`)
                 .then(res => res.ok ? res.json() : null)
                 .then(data => {

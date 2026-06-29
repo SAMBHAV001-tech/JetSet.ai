@@ -1,3 +1,4 @@
+import { getApiUrl } from '@/utils/api';
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
@@ -81,7 +82,7 @@ function DirectBookingLinks({ orgCode, destCode, travelDate }: { orgCode: string
 export default function FlightsModule({ tripId, org, dest, dates, curr }: ModuleProps) {
     const localeCurrency = useUserCurrency();
     const finalCurrency  = curr || localeCurrency;
-    const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
+    const API = getApiUrl();
 
     const [legsData,    setLegsData]    = useState<FlightLegsData | null>(null);
     const [legsStatus,  setLegsStatus]  = useState<"idle" | "loading" | "pending" | "ready" | "error">("idle");

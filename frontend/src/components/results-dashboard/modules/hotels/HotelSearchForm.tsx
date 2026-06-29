@@ -1,3 +1,4 @@
+import { getApiUrl } from '@/utils/api';
 import { useState, useRef } from "react";
 import { Search, MapPin, Calendar, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -38,7 +39,7 @@ export default function HotelSearchForm({ onSearch, isLoading }: HotelSearchForm
             try {
                 setIsFetchingSuggestions(true);
                 const params = new URLSearchParams({ keyword: val }).toString();
-                const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/hotels/autocomplete?${params}`, {
+                const res = await fetch(`${getApiUrl()}/hotels/autocomplete?${params}`, {
                     signal: abortControllerRef.current.signal
                 });
                 if (res.ok) {

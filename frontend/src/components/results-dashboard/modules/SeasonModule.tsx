@@ -1,3 +1,4 @@
+import { getApiUrl } from '@/utils/api';
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
@@ -36,7 +37,7 @@ export default function SeasonModule({ tripId, dest }: ModuleProps) {
         setError("");
         setContent("");
         try {
-            const baseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
+            const baseUrl = getApiUrl();
             const destination = dest || "the destination";
 
             const prompt = `Give a concise, markdown-formatted "Best Time to Visit ${destination}" guide.

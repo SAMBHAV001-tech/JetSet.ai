@@ -6,6 +6,7 @@ import { ModuleProps } from "./types";
 import HotelCard, { HotelData } from "./hotels/HotelCard";
 import HotelMap from "./hotels/HotelMap";
 import { MapPin, CalendarDays, Loader2, RefreshCw } from "lucide-react";
+import { getApiUrl } from "@/utils/api";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -40,7 +41,7 @@ export default function HotelsModule({ tripId, dest, dates, curr }: ModuleProps)
     const pollCountRef = useRef(0);
     const MAX_POLL = 15; // max ~45 seconds polling
 
-    const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
+    const API = getApiUrl();
 
     // ── 1. Load tripData ─────────────────────────────────────────────────────
     useEffect(() => {

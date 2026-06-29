@@ -1,3 +1,4 @@
+import { getApiUrl } from '@/utils/api';
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
@@ -47,7 +48,7 @@ export default function SummaryModule({ tripId }: ModuleProps) {
         setIsSummaryLoading(true);
         setSummary("");
         try {
-            const baseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
+            const baseUrl = getApiUrl();
             const response = await fetch(`${baseUrl}/ai/summary?tripId=${encodeURIComponent(tripId)}`);
             if (!response.ok) throw new Error("Failed to fetch summary");
 
@@ -108,7 +109,7 @@ export default function SummaryModule({ tripId }: ModuleProps) {
         setChatHistory((prev) => [...prev, { role: "model", content: "" }]);
 
         try {
-            const baseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
+            const baseUrl = getApiUrl();
             const response = await fetch(`${baseUrl}/ai/chat`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },

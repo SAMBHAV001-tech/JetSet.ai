@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { UseFormReturn } from "react-hook-form";
 import { TripFormValues } from "./TripWizard";
+import { getApiUrl } from "@/utils/api";
 import {
     FormControl,
     FormField,
@@ -41,9 +42,7 @@ function useLocationSearch(query: string, fieldName: "origin" | "destination", f
         const delayDebounceFn = setTimeout(async () => {
             setIsLoading(true);
             try {
-                const baseUrl = typeof process !== 'undefined' && process.env.NEXT_PUBLIC_API_URL
-                    ? process.env.NEXT_PUBLIC_API_URL
-                    : "http://localhost:3001";
+                const baseUrl = getApiUrl();
                 const response = await fetch(`${baseUrl}/destinations/search?q=${encodeURIComponent(query)}`);
 
                 if (response.ok) {
