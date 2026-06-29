@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="./homescreen_hd.png" alt="JetSet.AI Banner" width="100%">
+  <img src="homescreen_hd.png" alt="JetSet.AI Banner" width="100%">
 </p>
 
 <h1 align="center">JetSet.AI</h1>
